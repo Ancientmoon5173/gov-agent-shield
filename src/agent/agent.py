@@ -20,6 +20,7 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 
 from src.config import LLM_MOCK_MODE, LLM_API_KEY, LLM_API_BASE, LLM_MODEL_NAME
+from src.security import create_orchestrator
 from src.agent.tools import GOV_TOOLS, TOOL_METADATA
 from src.agent.prompts import SYSTEM_PROMPT
 
@@ -192,8 +193,14 @@ class GovAgent:
             "post_output": None,     # 输出检查
         }
 
+        # 安全协调器（阶段3）
+        self.orchestrator = create_orchestrator()
+
         # 推理引擎
         self.reasoning = MockReasoningEngine() if mode == "mock" else None
+
+        # 激活安全层钩子
+        self._activate_security_hooks()
 
         # LangChain Agent（real模式使用）
         self._agent_executor = None
@@ -258,6 +265,10 @@ class GovAgent:
         #     if result["blocked"]:
         #         return {"blocked": True, ...}
 
+        # 存储当前会话信息（供安全钩子使用）
+        self._current_session = session_id
+        self._current_input = user_input
+
         if self.mode == "mock":
             result = self._mock_execute(user_input, session_id, trace)
         else:
@@ -271,12 +282,23 @@ class GovAgent:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
+        # 执行安全检查（输入 + 输出）
+        input_check = self.orchestrator.check_input(session_id, user_input)
+
         return {
             "session_id": session_id,
             "user_input": user_input,
             "agent_response": result["agent_response"],
             "trace": trace,
-            "risk_assessment": {},  # 🔒 阶段3填充
+            "risk_assessment": {
+                "input_check": {
+                    "risk_score": input_check["risk_score"],
+                    "risk_level": input_check["risk_level"],
+                    "action": input_check["action"],
+                    "findings": input_check["findings"],
+                },
+                "summary": f"输入检测: {input_check['action']} | 评分: {input_check['risk_score']}",
+            },
         }
 
     def _mock_execute(
@@ -321,11 +343,18 @@ class GovAgent:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
-        # 🔒 阶段3：这里会插入 pre_tool_call 安全检查
-        # if self.security_hooks["pre_tool_call"]:
-        #     check = self.security_hooks["pre_tool_call"](tool_name, params)
-        #     if check["blocked"]:
-        #         return {"agent_response": f"操作已被安全系统阻断：{check['reason']}"}
+        # 🔒 安全检测：pre_tool_call
+        if self.security_hooks["pre_tool_call"]:
+            check = self.security_hooks["pre_tool_call"](tool_name, params)
+            trace.append({
+                "step": "security_check",
+                "result": check,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            if check["blocked"] or check["action"] == "kill":
+                action_name = check.get("action_name", "阻断")
+                reason = check.get("reason", "操作已被安全系统阻断")
+                return {"agent_response": f"🔒 安全系统{action_name}：{reason}"}
 
         # 步骤3：执行工具（模拟 Observation）
         try:
@@ -340,9 +369,16 @@ class GovAgent:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
-        # 🔒 阶段3：这里会插入 post_tool_call 安全检查
-        # if self.security_hooks["post_tool_call"]:
-        #     check = self.security_hooks["post_tool_call"](tool_name, observation)
+        # 🔒 安全检测：post_tool_call
+        if self.security_hooks["post_tool_call"]:
+            check = self.security_hooks["post_tool_call"](tool_name, observation)
+            if check["has_sensitive_data"]:
+                trace.append({
+                    "step": "output_sanitized",
+                    "sensitive_types": [f["label"] for f in check["findings"]],
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+                observation = check["masked_output"]
 
         # 步骤4：生成回复（模拟 Final Answer）
         response = self._format_response(tool_name, params, observation)
@@ -426,6 +462,27 @@ class GovAgent:
 # ========================
 # 便捷函数
 # ========================
+    def _activate_security_hooks(self) -> None:
+        """激活安全层钩子，将安全检查注入 Agent 调用链路。"""
+        def pre_tool_hook(tool_name, params):
+            session_id = getattr(self, "_current_session", "unknown")
+            user_input = getattr(self, "_current_input", "")
+            result = self.orchestrator.check_tool_call(session_id, tool_name, params, user_input)
+            return result
+
+        def pre_input_hook(user_input):
+            session_id = getattr(self, "_current_session", "unknown")
+            result = self.orchestrator.check_input(session_id, user_input)
+            return result
+
+        def post_tool_hook(tool_name, observation):
+            session_id = getattr(self, "_current_session", "unknown")
+            result = self.orchestrator.check_output(session_id, tool_name, observation)
+            return result
+
+        self.inject_security_hook("pre_tool_call", pre_tool_hook)
+        self.inject_security_hook("pre_input", pre_input_hook)
+        self.inject_security_hook("post_tool_call", post_tool_hook)
 def create_gov_agent(mode: str = "mock") -> GovAgent:
     """创建并返回一个配置好的 GovAgent 实例。"""
     return GovAgent(mode=mode)

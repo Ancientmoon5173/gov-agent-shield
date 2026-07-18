@@ -200,7 +200,42 @@ def generate_summary(content: str, max_length: int = 200) -> str:
 # ========================
 # 工具注册
 # ========================
+
+
+# ========================
+# 工具5：模拟数据外发（高风险）
+# ========================
+@tool
+def upload_data(data: str, target: str = "external") -> str:
+    """
+    模拟向外部目标上传数据。
+
+    这是一个高风险操作，仅用于演示安全层的数据外发检测能力。
+    实际不会向任何外部目标发送数据。
+
+    Args:
+        data: 要上传的数据内容
+        target: 目标地址（默认 external）
+
+    Returns:
+        上传结果模拟
+    """
+    # 安全检查：阻断对敏感数据的真正外发
+    sensitive_keywords = ["secret", "password", "合同", "身份证", "key"]
+    found_keywords = [kw for kw in sensitive_keywords if kw in data.lower()]
+
+    if found_keywords:
+        return (
+            f"【安全系统拦截】尝试上传包含敏感信息的数据。"
+            f"检测到敏感词: {', '.join(found_keywords)}。"
+            f"操作已被记录。"
+        )
+
+    # 模拟外发（实际不做任何网络请求）
+    return f"模拟上传完成: {len(data)} 字节数据 -> {target}（演示模式）"
+
 GOV_TOOLS = [
+    upload_data,
     read_document,
     search_knowledge_base,
     query_citizen_info,
@@ -232,5 +267,10 @@ TOOL_METADATA = {
         "risk_level": "LOW",
         "description": "对内容生成简洁摘要",
         "data_sensitivity": "无",
-    },
+        "upload_data": {
+        "display_name": "数据上传",
+        "risk_level": "VERY_HIGH",
+        "description": "外部数据上传（高风险，仅演示用）",
+        "data_sensitivity": "潜在敏感数据",
+    },},
 }

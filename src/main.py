@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from src.config import SERVICE_HOST, SERVICE_PORT
 from src.agent import GovAgent, GOV_TOOLS
+from src.security import create_orchestrator
 
 # 创建 FastAPI 应用实例
 app = FastAPI(
@@ -108,7 +109,63 @@ def agent_session(session_id: str):
     }
 
 
+# ========================
+# 安全状态 API
+# ========================
+
+_security_orchestrator = None
+
+def get_security_orchestrator():
+    global _security_orchestrator
+    if _security_orchestrator is None:
+        _security_orchestrator = create_orchestrator()
+    return _security_orchestrator
+
+
+@app.get("/security/status")
+def security_status():
+    """
+    获取安全层状态和事件摘要。
+    """
+    orch = get_security_orchestrator()
+    summary = orch.get_security_summary()
+    return {
+        "status": "active",
+        "summary": summary,
+    }
+
+
+@app.get("/security/events/{session_id}")
+def security_session_events(session_id: str):
+    """
+    获取指定会话的安全事件记录。
+    """
+    orch = get_security_orchestrator()
+    events = orch.get_session_events(session_id)
+    return {
+        "session_id": session_id,
+        "total_events": len(events),
+        "events": events,
+    }
+
+
+@app.post("/security/check_tool")
+def security_check_tool(tool_name: str = "", params: str = "{}", session_id: str = "test"):
+    """
+    直接测试安全层工具检测（不经过Agent）。
+    """
+    import json
+    orch = get_security_orchestrator()
+    try:
+        p = json.loads(params) if isinstance(params, str) else params
+    except json.JSONDecodeError:
+        p = {}
+    result = orch.check_tool_call(session_id, tool_name, p)
+    return result
+
+
 if __name__ == "__main__":
+
     uvicorn.run(
         "src.main:app",
         host=SERVICE_HOST,

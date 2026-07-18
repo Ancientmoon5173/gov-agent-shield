@@ -13,12 +13,12 @@ def test_agent_creation():
     agent = GovAgent(mode="mock")
     assert agent is not None
     assert agent.mode == "mock"
-    assert len(agent.tools) == 4
+    assert len(agent.tools) == 5
 
 
 def test_available_tools():
     """测试工具列表。"""
-    assert len(GOV_TOOLS) == 4
+    assert len(GOV_TOOLS) == 5
     tool_names = [t.name for t in GOV_TOOLS]
     assert "read_document" in tool_names
     assert "search_knowledge_base" in tool_names

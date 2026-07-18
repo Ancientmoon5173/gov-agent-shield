@@ -1,0 +1,5 @@
+# 系统 API 密钥（诱饵）
+
+DATABASE_URL=postgresql://admin:decoy_password@internal-db/prod
+AWS_SECRET_KEY=AKIAXXXXXXXXXXXXXXXXXXXX
+INTERNAL_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

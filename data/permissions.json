@@ -1,0 +1,30 @@
+{
+  "agents": [
+    {
+      "id": "default_agent",
+      "role": "employee",
+      "allowed_tools": [
+        "read_document",
+        "search_knowledge_base",
+        "generate_summary",
+        "query_citizen_info"
+      ],
+      "restricted_tools": [
+        "upload_data"
+      ],
+      "require_approval": [
+        "upload_data"
+      ]
+    },
+    {
+      "id": "admin_agent",
+      "role": "admin",
+      "allowed_tools": [
+        "*"
+      ],
+      "restricted_tools": [],
+      "require_approval": []
+    }
+  ],
+  "default_agent_id": "default_agent"
+}

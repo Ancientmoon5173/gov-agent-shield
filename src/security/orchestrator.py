@@ -155,6 +155,7 @@ class SecurityOrchestrator:
         tool_name: str,
         params: Dict[str, Any],
         user_input: str = "",
+        agent_id: str = "default_agent",
     ) -> Dict[str, Any]:
         """
         检查工具调用安全性（核心检测点）。
@@ -207,10 +208,46 @@ class SecurityOrchestrator:
                 details=behavior_event,
             )
 
-        # 5. 权限风险（MVP 返回 0）
-        r_permission = self.permission_checker.calculate_permission_risk()
+        # 5. 权限检查（升级）
+        perm_result = self.permission_checker.check(agent_id, tool_name, params)
+        perm_action = perm_result.action
 
-        # 6. 综合评分
+        # 权限不足 -> 直接阻断
+        if perm_action == "block":
+            self.security_logger.log_check(
+                session_id=session_id, check_type="permission",
+                tool_name=tool_name, tool_params=params,
+                risk_score=1.0, risk_level="VERY_HIGH", disposition="block",
+                details={"reason": perm_result.reason},
+            )
+            return {
+                "blocked": True, "risk_score": 1.0, "risk_level": "VERY_HIGH",
+                "action": "block", "action_name": "阻断",
+                "reason": perm_result.reason,
+                "dimensions": {"R_permission": 1.0}, "param_findings": [],
+                "behavior": behavior_result,
+                "decoy": decoy_result,
+            }
+
+        # 需要审批
+        if perm_action == "review":
+            self.security_logger.log_check(
+                session_id=session_id, check_type="permission",
+                tool_name=tool_name, tool_params=params,
+                risk_score=0.7, risk_level="HIGH", disposition="review",
+                details={"approval_id": perm_result.approval_id, "reason": perm_result.reason},
+            )
+            return {
+                "blocked": False, "risk_score": 0.7, "risk_level": "HIGH",
+                "action": "review", "action_name": "审批",
+                "reason": perm_result.reason,
+                "dimensions": {"R_permission": 0.7}, "param_findings": [],
+                "behavior": behavior_result,
+                "decoy": decoy_result,
+                "approval_id": perm_result.approval_id,
+            }
+
+        # 6. 综合评分（权限通过后）
         risk = _calculate_final_risk(
             r_input=0.0,
             r_tool=r_tool,

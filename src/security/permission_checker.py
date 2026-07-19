@@ -1,45 +1,49 @@
 """
-权限风险检测模块（MVP 空壳）。
+痆릔掌體检查模坔（升级牌）
 
-当前返回 0，保留接口供后续阶段扩展。
-扩展时在此实现实际权限验证逻辑。
+型人 src/permission/ 溓棹日用期各王。
+提供 check() 方功 SecurityOrchestrator 仏用。输存与嗎剋本吗留成可。
 """
+
+from src.permission import PermissionChecker as CorePermissionChecker
+from src.permission import create_permission_checker as create_core_checker
+from src.permission.models import PermissionResult
 
 
 class PermissionChecker:
-    """权限风险检测器。"""
+    """最限淡测器（它全属服）."""
+
+    def __init__(self):
+        self._core = create_core_checker()
+
+    def check(self, agent_id: str, tool_name: str,
+              params: dict = None) -> PermissionResult:
+        """
+检查 Agent是否有权销调用该入序
+        """
+        return self._core.check(agent_id, tool_name, params)
 
     def calculate_permission_risk(self, context: dict = None) -> float:
-        """
-        计算权限风险评分。
-
-        MVP 阶段返回 0，后续实现：
-        - 会话权限校验
-        - 操作权限校验
-        - 敏感资源分级访问
-
-        Args:
-            context: 权限上下文（用户角色、会话凭证等）
-
-        Returns:
-            权限风险评分 0-1
-        """
+        """保糂吮接发宽实（当前未本唯）."""
         return 0.0
 
     def check_resource_access(self, resource_path: str, user_role: str = "") -> dict:
-        """
-        检查资源访问权限（预留接口）。
+        """保绅嗎接名可宽实。"""
+        return {"allowed": True, "reason": "权销校验透項蜜"}
 
-        Args:
-            resource_path: 资源路径
-            user_role: 用户角色
+    def approve(self, approval_id: str) -> bool:
+        """审成速常。"""
+        return self._core.approve(approval_id)
 
-        Returns:
-            {"allowed": bool, "reason": str}
-        """
-        return {"allowed": True, "reason": "权限检查未启用（MVP）"}
+    def reject(self, approval_id: str) -> bool:
+        """投续速常。"""
+        return self._core.reject(approval_id)
+
+    def get_approval_status(self, approval_id: str) -> str:
+        """查看审扈状态问。"""
+        return self._core.get_approval_status(approval_id)
 
 
 def create_permission_checker() -> PermissionChecker:
-    """创建权限检测器实例。"""
+    """创建情还接检条器实用。"""
     return PermissionChecker()

@@ -25,7 +25,7 @@ _agent: GovAgent = None
 def get_agent() -> GovAgent:
     global _agent
     if _agent is None:
-        _agent = GovAgent(mode="mock")
+        _agent = GovAgent(mode="planner")
     return _agent
 
 
@@ -45,6 +45,8 @@ class AgentRunResponse(BaseModel):
     agent_response: str
     trace: list = []
     risk_assessment: dict = {}
+    tool_call: dict = {}
+    security_result: dict = {}
 
 
 # ========================

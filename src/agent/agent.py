@@ -23,6 +23,7 @@ from src.config import LLM_MOCK_MODE, LLM_API_KEY, LLM_API_BASE, LLM_MODEL_NAME
 from src.security import create_orchestrator
 from src.agent.tools import GOV_TOOLS, TOOL_METADATA
 from src.agent.prompts import SYSTEM_PROMPT
+from .planner import create_planner
 
 
 # ========================
@@ -198,6 +199,7 @@ class GovAgent:
 
         # 推理引擎
         self.reasoning = MockReasoningEngine() if mode == "mock" else None
+        self.planner = create_planner()
 
         # 激活安全层钩子
         self._activate_security_hooks()
@@ -269,7 +271,9 @@ class GovAgent:
         self._current_session = session_id
         self._current_input = user_input
 
-        if self.mode == "mock":
+        if self.mode == "planner":
+            result = self._planner_execute(user_input, session_id, trace)
+        elif self.mode == "mock":
             result = self._mock_execute(user_input, session_id, trace)
         else:
             result = self._real_execute(user_input, session_id, trace)
@@ -288,8 +292,10 @@ class GovAgent:
         return {
             "session_id": session_id,
             "user_input": user_input,
-            "agent_response": result["agent_response"],
+            "agent_response": result.get("agent_response", ""),
             "trace": trace,
+            "tool_call": result.get("tool_call", {}),
+            "security_result": result.get("security_result", {}),
             "risk_assessment": {
                 "input_check": {
                     "risk_score": input_check["risk_score"],
@@ -405,6 +411,50 @@ class GovAgent:
             return {"agent_response": result.get("output", "执行完成")}
         except Exception as e:
             return {"agent_response": f"执行出错：{str(e)}"}
+
+    def _planner_execute(self, user_input, session_id, trace):
+        """
+        Planner 模式执行流程。
+
+        输入 -> AgentPlanner.plan() -> ToolCall -> SecurityOrchestrator -> 结果
+        模拟真实 LLM Agent 的意图理解、工具选择和参数生成过程。
+        """
+        tool_call = self.planner.plan(user_input)
+        trace.append({"step": "planning", "tool": tool_call.tool_name, "params": tool_call.parameters, "reasoning": tool_call.reasoning, "timestamp": datetime.now(timezone.utc).isoformat()})
+
+        result = {"agent_response": "", "tool_call": tool_call.to_dict(), "security_result": {}}
+
+        if not tool_call.is_valid():
+            result["agent_response"] = "未能理解您的请求，请尝试重新描述。"
+            return result
+
+        # Security check
+        if self.security_hooks["pre_tool_call"]:
+            check = self.security_hooks["pre_tool_call"](tool_call.tool_name, tool_call.parameters)
+            trace.append({"step": "security_check", "result": check, "timestamp": datetime.now(timezone.utc).isoformat()})
+            result["security_result"] = check
+            if check["blocked"] or check["action"] == "kill":
+                result["agent_response"] = "🔒 " + "安全系统" + check.get("action_name", "阻断") + "：" + check.get("reason", "")
+                return result
+
+        # Execute tool
+        try:
+            observation = self.tool_map[tool_call.tool_name].invoke(tool_call.parameters)
+        except Exception as e:
+            observation = f"执行异常: {str(e)}"
+
+        trace.append({"step": "observation", "result": observation[:200], "timestamp": datetime.now(timezone.utc).isoformat()})
+
+        # Output check
+        if self.security_hooks["post_tool_call"]:
+            check = self.security_hooks["post_tool_call"](tool_call.tool_name, observation)
+            if check.get("has_sensitive_data"):
+                observation = check["masked_output"]
+                trace.append({"step": "output_sanitized", "sensitive_types": [f["label"] for f in check["findings"]], "timestamp": datetime.now(timezone.utc).isoformat()})
+
+        result["agent_response"] = self._format_response(tool_call.tool_name, tool_call.parameters, observation)
+        return result
+
 
     def _format_response(self, tool_name: str, params: Dict, observation: str) -> str:
         """格式化工具执行结果为用户可读的回复。"""

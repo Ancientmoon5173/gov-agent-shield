@@ -50,7 +50,7 @@ class MockReasoningEngine:
             "search", "find", "知识库", "办事指南",
         ],
         "query_citizen_info": [
-            "查询居民", "查人", "居民信息", "个人信息",
+            "查询居民", "查人", "居民信息", "个人信息","信息"
             "citizen", "居民", "身份证", "社保",
         ],
         "generate_summary": [

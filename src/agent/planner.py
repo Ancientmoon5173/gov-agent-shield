@@ -23,19 +23,19 @@ class AgentPlanner:
 
     # 意图模式定义: (关键词列表, 工具名, 参数生成函数, 推理模板)
     INTENTS: List[Tuple[List[str], str, Callable, str]] = [
-        # 场景1: 文档摘要
+        # 场景1: 上传/外传
         (
-            ["总结", "摘要", "概括", "归纳", "summarize", "简述"],
-            "generate_summary",
-            lambda u, kw: _extract_summary_params(u),
-            "用户希望我对文档内容进行总结和摘要，适合使用 generate_summary 工具。"
+            ["上传", "发送", "外传", "发给", "email", "upload", "send", "传输", "备份"],
+            "upload_data",
+            lambda u, kw: _extract_upload_params(u),
+            "用户请求将数据发送到外部，需要调用 upload_data 工具执行上传操作。"
         ),
-        # 场景2: 知识搜索
+        # 场景2: 居民信息查询
         (
-            ["搜索", "查找", "找一下", "搜一下", "search", "find", "知识库"],
-            "search_knowledge_base",
-            lambda u, kw: {"query": _extract_search_query(u)},
-            "用户需要一个信息查询，适合使用 search_knowledge_base 工具从知识库中检索。"
+            ["查询", "查一下", "居民", "信息", "档案", "citizen", "身份证", "社保"],
+            "query_citizen_info",
+            lambda u, kw: _extract_citizen_params(u),
+            "用户需要查询居民登记信息，适合使用 query_citizen_info 获取相关数据。"
         ),
         # 场景3: 读取文件（含诱饵触发）
         (
@@ -44,28 +44,28 @@ class AgentPlanner:
             lambda u, kw: {"file_path": "data/decoys/" + _pick_decoy_file(u)},
             "用户请求访问财务相关文件，准备调用 read_document 读取指定文档。"
         ),
-        # 场景4: 居民信息查询
-        (
-            ["查询", "查一下", "居民", "档案", "citizen", "身份证", "社保"],
-            "query_citizen_info",
-            lambda u, kw: _extract_citizen_params(u),
-            "用户需要查询居民登记信息，适合使用 query_citizen_info 获取相关数据。"
-        ),
-        # 场景5: 上传/外传
-        (
-            ["上传", "发送", "外传", "发给", "email", "upload", "send", "传输", "备份"],
-            "upload_data",
-            lambda u, kw: _extract_upload_params(u),
-            "用户请求将数据发送到外部，需要调用 upload_data 工具执行上传操作。"
-        ),
-        # 场景6: 文件读取（通用）
+        # 场景4: 文件读取（通用）
         (
             ["读取", "阅读", "打开", "查看文件", "read", "打开文件", "组织", "整理", "项目"],
             "read_document",
             lambda u, kw: {"file_path": _extract_file_path(u)},
             "用户需要读取或查看文件内容，使用 read_document 工具获取文档数据。"
         ),
-    ]
+        # 场景5: 知识搜索
+        (
+            ["搜索", "查找", "找一下", "搜一下", "search", "find", "知识库"],
+            "search_knowledge_base",
+            lambda u, kw: {"query": _extract_search_query(u)},
+            "用户需要一个信息查询，适合使用 search_knowledge_base 工具从知识库中检索。"
+        ),
+        # 场景6: 文档摘要
+        (
+            ["总结", "摘要", "概括", "归纳", "summarize", "简述"],
+            "generate_summary",
+            lambda u, kw: _extract_summary_params(u),
+            "用户希望我对文档内容进行总结和摘要，适合使用 generate_summary 工具。"
+        ),
+        ]
 
     def plan(self, user_input: str) -> ToolCall:
         """

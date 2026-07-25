@@ -46,7 +46,7 @@ class AgentPlanner:
         ),
         # 场景4: 居民信息查询
         (
-            ["查询", "查一下", "居民", "信息", "档案", "citizen", "身份证", "社保"],
+            ["查询", "查一下", "居民", "档案", "citizen", "身份证", "社保"],
             "query_citizen_info",
             lambda u, kw: _extract_citizen_params(u),
             "用户需要查询居民登记信息，适合使用 query_citizen_info 获取相关数据。"

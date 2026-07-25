@@ -48,17 +48,17 @@ PARAMETER_RISK_RULES = {
             "密码", "合同", "机密", "密钥",
         ],
         "keyword_penalty": 0.3,
-        "path_traversal_patterns": ["../", "..\\", "/etc/", "/var/", "C:\\Windows"],
+        "path_traversal_patterns": ["../", "..\\", "/etc/", "/var/", "C:\\Windows", "%2e%2e", "....//", "..%2f", "%2f%2e%2e%2f"],
         "traversal_penalty": 0.5,
     },
     "query_citizen_info": {
-        "batch_keywords": ["全部", "所有", "all"],
+        "batch_keywords": ["全部", "所有", "all", "全量", "全部员工", "所有人", "所有用户"],
         "batch_penalty": 0.3,
         "full_id_pattern": r"[0-9]{18}",
         "full_id_penalty": 0.2,
     },
     "upload_data": {
-        "external_target_patterns": ["http://", "https://"],
+        "external_target_patterns": ["http://", "https://", "ftp://", "smtp://", "smtps://"],
         "target_penalty": 0.2,
     },
 }

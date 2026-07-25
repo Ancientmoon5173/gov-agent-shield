@@ -261,6 +261,33 @@ class GovAgent:
 
         trace = []
 
+        # 🔒 全局前置安全检测（优化1）
+        # 在规划器执行前，对用户输入进行高危模式检测
+        # 只有明确恶意模式（越狱、角色覆盖、数据外传）触发阻断
+        # 普通业务词（导出、备份、发送等）不在此列
+        pre_check = self.orchestrator.check_input(session_id, user_input)
+        from src.input_guard.rules import has_high_severity_match
+        if has_high_severity_match(pre_check.get("findings", [])):
+            trace.append({
+                "step": "pre_block",
+                "action": "block",
+                "reason": pre_check.get("reason", ""),
+                "findings": pre_check.get("findings", []),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            return {
+                "session_id": session_id,
+                "user_input": user_input,
+                "agent_response": f"🔒 安全系统阻断：{pre_check.get('reason', '检测到恶意输入')}",
+                "trace": trace,
+                "tool_call": {},
+                "security_result": {"action": "block", "reason": pre_check.get("reason", "")},
+                "risk_assessment": {
+                    "input_check": {"action": "block", "risk_score": pre_check.get("risk_score", 1.0), "risk_level": "CRITICAL", "findings": pre_check.get("findings", [])},
+                    "summary": "\u524d\u7f6e\u963b\u65ad\uff1a\u9ad8\u5371\u8f93\u5165\u6a21\u5f0f",
+                },
+            }
+
         # 🔒 阶段3：这里会插入 pre_input 安全检查
         # if self.security_hooks["pre_input"]:
         #     result = self.security_hooks["pre_input"](user_input)

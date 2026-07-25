@@ -64,6 +64,11 @@ class DecoyManager:
 
         # 2. 凭证诱饵
         generator.create_fake_key("fake_openai_key.txt")
+        generator.create_fake_contract("admin_config.json")
+        generator.create_fake_contract("secret_contract.pdf")
+        generator.create_fake_contract("employee_salary.xlsx")
+        generator.create_fake_contract("key_management.txt")
+        generator.create_fake_contract("sensitive_report.xls")
         # 手动创建额外的凭证诱饵
         pwd_file = generator.decoy_dir / "fake_database_password.txt"
         pwd_file.write_text(

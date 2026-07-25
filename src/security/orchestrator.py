@@ -27,6 +27,7 @@ from .output_guard import OutputGuard, create_output_guard
 from .security_logger import SecurityLogger, create_security_logger
 from .permission_checker import PermissionChecker, create_permission_checker
 from .decoy_manager import DecoyManager, create_decoy_manager
+from src.input_guard.sensitive_data_leak_detector import SensitiveDataLeakDetector
 
 
 # 五维风险融合权重
@@ -116,12 +117,19 @@ class SecurityOrchestrator:
         self.permission_checker = permission_checker or create_permission_checker()
         self.decoy_manager = decoy_manager or create_decoy_manager()
         self.security_logger = security_logger or create_security_logger()
+        self.sensitive_data_leak_detector = SensitiveDataLeakDetector()
 
         self.disposition_engine = DispositionEngine()
 
     def check_input(self, session_id: str, user_input: str) -> Dict[str, Any]:
         """检查用户输入安全性。"""
         scan_result = self.input_detector.scan(user_input)
+        leak_result = self.sensitive_data_leak_detector.scan(user_input)
+        if leak_result["risk_score"] > scan_result.get("risk_score", 0):
+            scan_result["risk_score"] = leak_result["risk_score"]
+        if leak_result.get("findings"):
+            for f in leak_result["findings"]:
+                scan_result["findings"].append(f)
         r_input = scan_result.get("risk_score", 0.0)
 
         risk = _calculate_final_risk(

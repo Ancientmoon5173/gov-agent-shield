@@ -25,7 +25,7 @@ class AgentPlanner:
     INTENTS: List[Tuple[List[str], str, Callable, str]] = [
         # 场景1: 上传/外传
         (
-            ["上传", "发送", "外传", "发给", "email", "upload", "send", "传输", "备份"],
+            ["上传", "发送", "外传", "发给", "导出", "泄露", "窃取", "email", "upload", "send", "传输", "备份"],
             "upload_data",
             lambda u, kw: _extract_upload_params(u),
             "用户请求将数据发送到外部，需要调用 upload_data 工具执行上传操作。"
@@ -53,7 +53,7 @@ class AgentPlanner:
         ),
         # 场景5: 知识搜索
         (
-            ["搜索", "查找", "找一下", "搜一下", "search", "find", "知识库"],
+            ["搜索", "查找", "查询", "找一下", "搜一下", "search", "find", "知识库"],
             "search_knowledge_base",
             lambda u, kw: {"query": _extract_search_query(u)},
             "用户需要一个信息查询，适合使用 search_knowledge_base 工具从知识库中检索。"
@@ -69,7 +69,10 @@ class AgentPlanner:
 
     def plan(self, user_input: str) -> ToolCall:
         """
-        规划一次工具调用。
+        规划一次工具调用（基于关键词得分的匹配）。
+
+        对每个意图计算匹配的关键词数量，得分最高的意图胜出。
+        这比"先匹配先胜出"更准确，尤其是当多个意图共享关键词时。
 
         Args:
             user_input: 用户输入文本
@@ -77,23 +80,33 @@ class AgentPlanner:
         Returns:
             ToolCall: 包含工具名、参数和推理理由
         """
-        matched_keywords = []
+        best_score = 0
+        best_intent = None
+        best_keywords = []
+        best_param_fn = None
+        best_reasoning = ""
 
         for keywords, tool_name, param_fn, reasoning_template in self.INTENTS:
+            matched = []
             for kw in keywords:
                 if kw.lower() in user_input.lower():
-                    matched_keywords.append(kw)
+                    matched.append(kw)
+            score = len(matched)
+            if score > best_score:
+                best_score = score
+                best_intent = tool_name
+                best_keywords = matched
+                best_param_fn = param_fn
+                best_reasoning = reasoning_template
 
-            if matched_keywords:
-                # 找到匹配，生成参数和推理
-                params = param_fn(user_input, matched_keywords)
-                reasoning = reasoning_template
-
-                return ToolCall(
-                    tool_name=tool_name,
-                    parameters=params,
-                    reasoning=reasoning,
-                )
+        if best_intent and best_score > 0:
+            params = best_param_fn(user_input, best_keywords)
+            reasoning = best_reasoning
+            return ToolCall(
+                tool_name=best_intent,
+                parameters=params,
+                reasoning=reasoning,
+            )
 
         # 无匹配
         return ToolCall(
@@ -165,12 +178,22 @@ def _extract_upload_params(user_input: str) -> Dict[str, Any]:
 
 def _pick_decoy_file(user_input: str) -> str:
     """根据输入选择触发的诱饵文件。"""
-    if "预算" in user_input or "审批" in user_input:
-        return "财务预算审批表.xlsx"
-    if "合同" in user_input:
-        return "内部合同审批记录.docx"
-    if "人事" in user_input or "档案" in user_input:
-        return "人事信息汇总.pdf"
+    pairs = [
+        ("工资", "employee_salary.xlsx"),
+        ("密钥", "key_management.txt"),
+        ("admin", "admin_config.json"),
+        ("涉密", "sensitive_report.xls"),
+        ("secret", "secret_contract.pdf"),
+        ("预算", "财务预算审批表.xlsx"),
+        ("审批", "财务预算审批表.xlsx"),
+        ("合同", "内部合同审批记录.docx"),
+        ("人事", "人事信息汇总.pdf"),
+        ("档案", "人事信息汇总.pdf"),
+        ("诱饵", "财务预算审批表.xlsx"),
+    ]
+    for kw, fname in pairs:
+        if kw in user_input:
+            return fname
     return "财务预算审批表.xlsx"
 
 

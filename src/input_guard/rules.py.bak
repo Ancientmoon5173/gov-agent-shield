@@ -183,60 +183,9 @@ def has_high_severity_match(findings: list) -> bool:
     """检查检测发现中是否包含高危阻断规则命中。"""
     return any(f.get("rule_name") in HIGH_SEVERITY_RULE_NAMES for f in findings)
 
-# ========================
-# 中文越狱规则
-# ========================
-CHINESE_JAILBREAK_RULES = [
-    InjectionRule(name="ch_jailbreak_ignore_instruction",
-        pattern=r"忽略.{0,10}(指令|规则|提示|系统|所有)",
-        attack_type="jailbreak", severity=0.85,
-        description="中文越狱：忽略系统规则"),
-    InjectionRule(name="ch_jailbreak_override_role",
-        pattern=r"现在.{0,5}(你是|你变成|你担任)",
-        attack_type="jailbreak", severity=0.8,
-        description="中文越狱：角色覆盖"),
-    InjectionRule(name="ch_jailbreak_no_rules",
-        pattern=r"不需要遵守|不用管|无需遵守|违反规则",
-        attack_type="jailbreak", severity=0.85,
-        description="中文越狱：无视规则"),
-]
-
-# ========================
-# 中文外传规则
-# ========================
-CHINESE_EXFILTRATION_RULES = [
-    InjectionRule(name="ch_exfiltrate_send",
-        pattern=r"发送.{0,10}(到|给|至)",
-        attack_type="data_exfiltration", severity=0.5,
-        description="中文外传：发送到外部"),
-    InjectionRule(name="ch_exfiltrate_leak",
-        pattern=r"泄露|竃取|外传|爬取",
-        attack_type="data_exfiltration", severity=0.9,
-        description="中文外传：泄露/竃取"),
-    InjectionRule(name="ch_exfiltrate_export",
-        pattern=r"导出|备份|下载|复制",
-        attack_type="data_exfiltration", severity=0.75,
-        description="中文外传：导出/备份"),
-]
-
-# ========================
-# 高危阻断规则集
-# ========================
-HIGH_SEVERITY_RULE_NAMES = {
-    "jailbreak_role_play", "jailbreak_dan", "jailbreak_act_as",
-    "override_injection", "override_end", "sensitive_exfiltrate",
-    "ch_jailbreak_ignore_instruction", "ch_jailbreak_override_role",
-    "ch_jailbreak_no_rules", "ch_exfiltrate_leak",
-}
-
-def has_high_severity_match(findings):
-    return any(f.get("rule_name") in HIGH_SEVERITY_RULE_NAMES for f in findings)
-
-
-
-
-
 DEFAULT_RULES = JAILBREAK_RULES + OVERRIDE_RULES + SENSITIVE_COMMAND_RULES + CHINESE_JAILBREAK_RULES + CHINESE_EXFILTRATION_RULES
+
+
 def get_default_detector():
     """创建一个配置好默认规则的检测器。"""
     from .detector import InputDetector

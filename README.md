@@ -1,3 +1,6 @@
+# gov-agent-shield
+GovAgent-Shield: Depth defense framework to protect LLM Agent against prompt injection, data leakage and unauthorized access . 
+
 # GovAgent-Shield
 
 面向政企场景的大模型智能体安全防护平台。
@@ -69,3 +72,6 @@ GovAgent-Shield/
 ## 许可证
 
 本项目用于揭榜挂帅比赛，仅限学习和研究用途。
+
+
+

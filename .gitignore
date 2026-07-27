@@ -1,4 +1,5 @@
-# Python
+# ===================== 本地项目专属忽略规则 =====================
+# Python缓存
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -6,39 +7,199 @@ dist/
 build/
 .eggs/
 
-# Virtual environment
+# 虚拟环境
 venv/
 .venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 
-# IDE
+# IDE编辑器缓存
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# 系统隐藏文件
 .DS_Store
 Thumbs.db
 
-# Environment
+# 环境密钥文件
 .env
 .env.local
+.envrc
+*.pem
+*.key
+config.local.yaml
 
-# Database
+# 数据库文件
 *.db
 *.sqlite
 *.sqlite3
+*.rdb
+*.aof
+*.pid
 
-# Logs
+# 日志文件
 *.log
 audit_logs/
 
-# Test
+# 单元测试、覆盖率报告
 .pytest_cache/
 htmlcov/
 .coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.hypothesis/
+cover/
 
-# Project specific
-config.local.yaml
-*.pem
-*.key
+# 红队运行自动生成输出文件（项目专属）
+missed_samples.json
+redteam_latest.json
+redteam_trace_*.json
+debug_reports/
+
+# Streamlit 密钥缓存
+.streamlit/secrets.toml
+.streamlit/
+.streamlit_cache/
+
+# ===================== GitHub官方完整Python模板规则 =====================
+# Byte-compiled / optimized / DLL files
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+develop-eggs/
+downloads/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+MANIFEST
+
+# PyInstaller打包文件
+*.manifest
+*.spec
+
+# Pip安装日志
+pip-log.txt
+pip-delete-this-directory.txt
+
+# 翻译缓存
+*.mo
+*.pot
+
+# Django框架缓存
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask框架缓存
+instance/
+.webassets-cache
+
+# Scrapy爬虫缓存
+.scrapy
+
+# Sphinx文档编译缓存
+docs/_build/
+/site
+
+# PyBuilder构建缓存
+.pybuilder/
+target/
+
+# Jupyter笔记本缓存
+.ipynb_checkpoints
+
+# IPython交互缓存
+profile_default/
+ipython_config.py
+
+# pyenv版本文件
+# .python-version
+
+# Pipenv锁文件（按需开启）
+# Pipfile.lock
+
+# UV包管理器锁文件
+# uv.lock
+
+# Poetry依赖锁文件
+# poetry.lock
+# poetry.toml
+
+# PDM包管理器缓存
+.pdm-python
+.pdm-build/
+# pdm.lock
+# pdm.toml
+
+# Pixi虚拟环境缓存
+.pixi
+
+# PEP 582 本地包缓存
+__pypackages__/
+
+# Celery定时任务缓存
+celerybeat-schedule
+celerybeat.pid
+
+# 消息队列缓存
+mnesia/
+rabbitmq/
+rabbitmq-data/
+activemq-data/
+
+# SageMath编译文件
+*.sage.py
+
+# Spyder编辑器缓存
+.spyderproject
+.spyproject
+
+# Rope代码重构缓存
+.ropeproject
+
+# mypy静态类型检查缓存
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre类型检查缓存
+.pyre/
+
+# pytype静态分析缓存
+.pytype/
+
+# Cython调试符号缓存
+cython_debug/
+
+# Abstra自动化框架缓存
+.abstra/
+
+# CodeRunner临时文件
+tempCodeRunnerFile.py
+
+# Ruff代码格式化缓存
+.ruff_cache/
+
+# PyPI本地配置
+.pypirc
+
+# Marimo笔记缓存
+marimo/_static/
+marimo/_lsp/
+__marimo__/

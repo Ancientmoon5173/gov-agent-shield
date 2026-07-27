@@ -235,6 +235,8 @@ class SecurityOrchestrator:
                 "dimensions": {"R_permission": 1.0}, "param_findings": [],
                 "behavior": behavior_result,
                 "decoy": decoy_result,
+            "defense_stage": "permission_checker",
+            "decision_reason": perm_result.reason,
             }
 
         # 需要审批
@@ -253,6 +255,8 @@ class SecurityOrchestrator:
                 "behavior": behavior_result,
                 "decoy": decoy_result,
                 "approval_id": perm_result.approval_id,
+            "defense_stage": "permission_checker",
+            "decision_reason": perm_result.reason,
             }
 
         # 6. 综合评分（权限通过后）
@@ -284,8 +288,20 @@ class SecurityOrchestrator:
             },
         )
 
+        # Determine defense_stage
+        if decoy_result.get("triggered"):
+            defense_stage = "decoy_manager"
+        elif param_result.get("findings"):
+            defense_stage = "parameter_checker"
+        elif behavior_result["behavior_score"] > 0:
+            defense_stage = "behavior_analyzer"
+        else:
+            defense_stage = "risk_engine"
+
         return {
             "blocked": blocked,
+            "defense_stage": defense_stage,
+            "decision_reason": disposition.get("reason", ""),
             "risk_score": risk["total_score"],
             "risk_level": risk["level"],
             "action": disposition["action"],

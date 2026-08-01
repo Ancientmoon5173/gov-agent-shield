@@ -1,13 +1,25 @@
 /**
- * GovAgent-Shield OpenClaw 适配层测试。
+ * GovAgent-Shield OpenClaw 适配层测试（Phase 2）。
  *
- * 模拟 OpenClaw beforeToolCall / afterToolCall 上下文，
- * 验证 ToolRequest 构建、捕获、日志输出。
+ * 使用 mock HTTP 客户端，验证：
+ * - 组合模式：Shield 优先，allow 后执行原 hook
+ * - 阻断逻辑：block/kill/review 均阻断
+ * - fail-close：HTTP 异常默认阻断
+ * - AbortSignal 传递
  */
 
 import { buildToolRequest } from "../src/tool_request.js";
-import { createGovAgentShieldHooks } from "../src/hooks.js";
-import type { BeforeToolCallContext } from "../src/types.js";
+import {
+  createGovAgentShieldHooks,
+  type ShieldHttpClientLike,
+} from "../src/hooks.js";
+import type {
+  BeforeToolCallContext,
+  ShieldAfterToolCallContext,
+  ShieldBeforeToolCallResult,
+  ToolRequest,
+} from "../src/types.js";
+import type { ShieldDecision } from "../src/http_client.js";
 
 function assert(cond: boolean, msg?: string) {
   if (!cond) throw new Error(msg ?? "Assertion failed");
@@ -33,9 +45,29 @@ function createSampleContext(): BeforeToolCallContext {
   };
 }
 
+/** Mock HTTP 客户端：按预设响应队列返回决策 */
+function createMockHttp(
+  responses: ShieldDecision[],
+  fail = false,
+): ShieldHttpClientLike {
+  const calls: ToolRequest[] = [];
+  return {
+    sendToolRequest: async (
+      request: ToolRequest,
+      _signal?: AbortSignal,
+    ): Promise<ShieldDecision> => {
+      calls.push(request);
+      if (fail) throw new Error("mock 网络故障");
+      const r = responses.shift();
+      if (!r) throw new Error("mock 响应用尽");
+      return r;
+    },
+  };
+}
+
 async function main() {
   console.log("========================================");
-  console.log("GovAgent-Shield OpenClaw 适配层测试");
+  console.log("GovAgent-Shield OpenClaw 适配层测试 (Phase 2)");
   console.log("========================================\n");
 
   // Test 1: ToolRequest 构建
@@ -46,45 +78,133 @@ async function main() {
   assert(req.agent_id === "agent-001", "agent_id 应为 agent-001");
   assert(
     req.parameters.file_path === "policy_document.txt",
-    "parameters.file_path 应为 policy_document.txt",
+    "parameters.file_path 应正确",
   );
   assert(req.timestamp.length > 0, "timestamp 不应为空");
   console.log("[PASS] ToolRequest 构建\n");
-  console.log(JSON.stringify(req, null, 2));
-  console.log("");
 
-  // Test 2: beforeToolCall 捕获
-  let captured: unknown;
-  const hooks = createGovAgentShieldHooks({
+  // Test 2: allow → 放行，且执行原 hook（组合模式）
+  const mockAllow = createMockHttp([
+    {
+      decision: "allow",
+      action: "allow",
+      blocked: false,
+      reason: "安全检测通过",
+      risk_score: 0,
+      risk_level: "LOW",
+    },
+  ]);
+  const originalHookCalled = { value: false };
+  const hooksAllow = createGovAgentShieldHooks({
     sessionId: "session-001",
     agentId: "agent-001",
-    log: (msg, data) => {
-      if (msg.includes("ToolRequest")) captured = data;
-    },
+    httpClient: mockAllow,
   });
-  const result = await hooks.beforeToolCall(ctx);
-  assert(result === undefined, "Phase 1 不应阻断");
-  assert(captured !== undefined, "应捕获到 ToolRequest");
-  const capturedReq = captured as Record<string, unknown>;
-  assert(capturedReq.tool_name === "read_document", "捕获的 tool_name 应正确");
-  console.log("[PASS] beforeToolCall 捕获并输出 ToolRequest 日志\n");
+  const rAllow = await hooksAllow.beforeToolCall(
+    createSampleContext(),
+    undefined,
+    async () => {
+      originalHookCalled.value = true;
+      return undefined;
+    },
+  );
+  assert(rAllow === undefined, "allow 应放行");
+  assert(originalHookCalled.value === true, "allow 后应执行原 hook");
+  console.log("[PASS] allow → 放行 + 原 hook 执行（组合模式）\n");
 
-  // Test 3: afterToolCall 记录
-  const afterResult = await hooks.afterToolCall({
+  // Test 3: block → 阻断，原 hook 不执行
+  const mockBlock = createMockHttp([
+    {
+      decision: "block",
+      action: "block",
+      blocked: true,
+      reason: "检测到敏感文件",
+      risk_score: 0.8,
+      risk_level: "CRITICAL",
+    },
+  ]);
+  const originalHookCalled2 = { value: false };
+  const hooksBlock = createGovAgentShieldHooks({
+    sessionId: "session-001",
+    agentId: "agent-001",
+    httpClient: mockBlock,
+  });
+  const rBlock: ShieldBeforeToolCallResult | undefined =
+    await hooksBlock.beforeToolCall(
+    createSampleContext(),
+    undefined,
+    async () => {
+      originalHookCalled2.value = true;
+      return undefined;
+    },
+  );
+  const blockValue = rBlock?.block as unknown as boolean;
+  assert(blockValue === true, "block 应阻断");
+  assert(rBlock?.reason === "检测到敏感文件", "block reason 应透传");
+  assert(originalHookCalled2.value === false, "block 后不应执行原 hook");
+  console.log("[PASS] block → 阻断 + 原 hook 不执行\n");
+
+  // Test 4: review → 按需求暂时阻断
+  const mockReview = createMockHttp([
+    {
+      decision: "review",
+      action: "review",
+      blocked: false,
+      reason: "需要人工审批",
+      risk_score: 0.5,
+      risk_level: "HIGH",
+    },
+  ]);
+  const hooksReview = createGovAgentShieldHooks({
+    sessionId: "session-001",
+    agentId: "agent-001",
+    httpClient: mockReview,
+  });
+  const rReview = await hooksReview.beforeToolCall(createSampleContext());
+  assert(rReview?.block === true, "review 应暂时阻断");
+  console.log("[PASS] review → 暂时阻断\n");
+
+  // Test 5: fail-close（HTTP 异常 → block）
+  const mockFail = createMockHttp([], true);
+  const hooksFail = createGovAgentShieldHooks({
+    sessionId: "session-001",
+    agentId: "agent-001",
+    httpClient: mockFail,
+  });
+  const rFail: ShieldBeforeToolCallResult | undefined =
+    await hooksFail.beforeToolCall(createSampleContext());
+  const failBlock = rFail?.block as unknown as boolean;
+  assert(failBlock === true, "HTTP 异常应 fail-close 阻断");
+  console.log("[PASS] fail-close → HTTP 异常默认阻断\n");
+
+  // Test 6: afterToolCall 组合模式透传
+  const hooksAfter = createGovAgentShieldHooks({
+    sessionId: "session-001",
+    agentId: "agent-001",
+    httpClient: mockAllow,
+  });
+  const afterOriginalCalled = { value: false };
+  const afterCtx: ShieldAfterToolCallContext = {
     assistantMessage: ctx.assistantMessage,
     toolCall: ctx.toolCall,
     args: ctx.args,
-    result: {
-      content: [{ type: "text", text: "文件内容摘要..." }],
-      details: {},
-    },
+    result: { content: [{ type: "text", text: "文件内容" }], details: {} },
     isError: false,
     context: ctx.context,
-  });
-  assert(afterResult === undefined, "Phase 1 不应覆盖结果");
-  console.log("[PASS] afterToolCall 记录执行结果\n");
+  };
+  const rAfter = await hooksAfter.afterToolCall(
+    afterCtx,
+    undefined,
+    async () => {
+      afterOriginalCalled.value = true;
+      return undefined;
+    },
+  );
+  assert(rAfter === undefined, "afterToolCall 默认不覆盖结果");
+  assert(afterOriginalCalled.value === true, "afterToolCall 应透传原 hook");
+  console.log("[PASS] afterToolCall 组合模式透传\n");
 
-  // Test 4: 参数截断保护
+  // Test 7: 参数截断保护
   const bigCtx: BeforeToolCallContext = {
     ...createSampleContext(),
     toolCall: {
@@ -94,12 +214,10 @@ async function main() {
     args: { data: "x".repeat(5000) },
   };
   const bigReq = buildToolRequest(bigCtx);
-  // parameters 保留完整参数（安全层需要）
   assert(
     bigReq.parameters.data === "x".repeat(5000),
     "parameters 应保留完整参数供安全检测",
   );
-  // context.tool_arguments_raw 应被截断（日志安全）
   const raw = bigReq.context.tool_arguments_raw as { truncated?: boolean };
   assert(raw.truncated === true, "日志中的原始参数应被截断");
   console.log("[PASS] 参数截断保护（parameters 完整 / 日志截断）\n");
@@ -111,5 +229,5 @@ async function main() {
 
 main().catch((err) => {
   console.error("测试失败:", err);
-  process.exit(1);
+  throw err;
 });

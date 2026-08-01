@@ -49,6 +49,16 @@ class AgentRunResponse(BaseModel):
     security_result: dict = {}
 
 
+class SecurityCheckRequest(BaseModel):
+    """OpenClaw 适配层安全检测请求。"""
+    session_id: str
+    agent_id: str = "default_agent"
+    tool_name: str
+    parameters: dict = {}
+    context: dict = {}
+    timestamp: str = ""
+
+
 # ========================
 # 根路径
 # ========================
@@ -152,17 +162,23 @@ def security_session_events(session_id: str):
 
 
 @app.post("/security/check_tool")
-def security_check_tool(tool_name: str = "", params: str = "{}", session_id: str = "test"):
+def security_check_tool(req: SecurityCheckRequest):
     """
-    直接测试安全层工具检测（不经过Agent）。
+    OpenClaw 适配层安全检测接口。
+
+    接收 OpenClaw ToolCall 的 ToolRequest，调用 SecurityOrchestrator
+    进行安全检查，返回 allow / block / kill / review 决策。
     """
-    import json
     orch = get_security_orchestrator()
-    try:
-        p = json.loads(params) if isinstance(params, str) else params
-    except json.JSONDecodeError:
-        p = {}
-    result = orch.check_tool_call(session_id, tool_name, p)
+    result = orch.check_tool_call(
+        session_id=req.session_id,
+        tool_name=req.tool_name,
+        params=req.parameters,
+        agent_id=req.agent_id,
+    )
+    # 补充决策字段（OpenClaw 侧需要）
+    result.setdefault("defense_stage", "risk_engine")
+    result.setdefault("decision_reason", result.get("reason", ""))
     return result
 
 

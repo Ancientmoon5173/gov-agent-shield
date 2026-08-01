@@ -24,6 +24,7 @@ from src.security import create_orchestrator
 from src.agent.tools import GOV_TOOLS, TOOL_METADATA
 from src.agent.prompts import SYSTEM_PROMPT
 from .planner import create_planner
+from src.runtime import ToolInterceptor, ExecutionProxy, MockAgentAdapter
 
 
 # ========================
@@ -200,6 +201,11 @@ class GovAgent:
         # 推理引擎
         self.reasoning = MockReasoningEngine() if mode == "mock" else None
         self.planner = create_planner()
+
+        # Runtime 层（真实 Agent 接入）
+        self.tool_interceptor = ToolInterceptor(self.orchestrator)
+        self.execution_proxy = ExecutionProxy(self.tools)
+        self.agent_adapter = MockAgentAdapter()
 
         # 激活安全层钩子
         self._activate_security_hooks()
@@ -424,20 +430,52 @@ class GovAgent:
         trace: List[Dict],
     ) -> Dict[str, str]:
         """
-        Real 模式执行流程。
+        Real 模式执行流程（Runtime 层）。
 
-        使用 LangChain AgentExecutor 调用真实 LLM。
+        Agent 产生 ToolCall → ToolInterceptor → SecurityOrchestrator → 工具执行
+
+        禁止直接调用工具：所有工具执行必须经过安全拦截。
         """
-        if not self._agent_executor:
-            return {"agent_response": "错误：Agent 未正确初始化，请检查 API 配置"}
+        if not self.agent_adapter:
+            return {"agent_response": "错误：Agent 适配器未初始化"}
 
-        try:
-            result = self._agent_executor.invoke({
-                "input": user_input,
-            })
-            return {"agent_response": result.get("output", "执行完成")}
-        except Exception as e:
-            return {"agent_response": f"执行出错：{str(e)}"}
+        # 1. Agent 通过适配器生成 ToolCall
+        request = self.agent_adapter.generate_tool_call(
+            user_input, context={"session_id": session_id}
+        )
+
+        trace.append({
+            "step": "runtime_tool_request",
+            "tool": request.tool_name,
+            "agent_id": request.agent_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
+        # 2. 安全拦截
+        decision = self.tool_interceptor.intercept(request)
+
+        trace.append({
+            "step": "runtime_intercept",
+            "decision": decision["decision"],
+            "reason": decision["reason"],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
+        # 3. 根据决策执行
+        if decision["decision"] == "allow":
+            result = self.execution_proxy.execute(
+                request.tool_name, request.parameters
+            )
+            response = self._format_response(
+                request.tool_name, request.parameters, result
+            )
+        elif decision["decision"] == "review":
+            response = f"\U0001f512 \u9700\u8981\u4eba\u5de5\u5ba1\u6279\uff1a{decision['reason']}"
+        else:
+            # block / kill
+            response = f"\U0001f512 \u5b89\u5168\u7cfb\u7edf\u963b\u65ad\uff1a{decision['reason']}"
+
+        return {"agent_response": response}
 
     def _planner_execute(self, user_input, session_id, trace):
         """

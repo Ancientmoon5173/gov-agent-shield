@@ -8,18 +8,29 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from src.config import DATA_DIR
+from src.config import DATA_DIR, SECURITY_MODE, SECURITY_MODES
 from .models import PermissionPolicy
 
 
 DEFAULT_PERMISSIONS_FILE = DATA_DIR / "permissions.json"
 
+OWNER_POLICY = {
+    "role": "owner",
+    "allowed_tools": ["*"],
+    "restricted_tools": [],
+    "require_approval": [],
+}
+
 
 class PermissionStorage:
     """权限存储加载器。"""
 
-    def __init__(self, file_path: Optional[Path] = None):
+    def __init__(self, file_path: Optional[Path] = None,
+                 security_mode: Optional[str] = None):
         self.file_path = file_path or DEFAULT_PERMISSIONS_FILE
+        self.security_mode = security_mode or SECURITY_MODE
+        if self.security_mode not in SECURITY_MODES:
+            self.security_mode = "single_user"
         self._cache: Optional[Dict[str, Any]] = None
 
     def load(self) -> Dict[str, Any]:
@@ -43,8 +54,22 @@ class PermissionStorage:
             if agent_data.get("id") == agent_id:
                 return PermissionPolicy.from_dict(agent_data)
 
-        # 不存在时返回默认策略（空权限）
+        # 单用户模式：设备持有者身份兜底，权限层不做业务阻断
+        if self.security_mode == "single_user":
+            return PermissionPolicy(
+                agent_id=agent_id,
+                role=OWNER_POLICY["role"],
+                allowed_tools=list(OWNER_POLICY["allowed_tools"]),
+                restricted_tools=list(OWNER_POLICY["restricted_tools"]),
+                require_approval=list(OWNER_POLICY["require_approval"]),
+            )
+
+        # 企业模式：未登记 agent 返回空权限，所有工具默认拦截
         return PermissionPolicy(agent_id=agent_id, role="unknown")
+
+    def get_security_mode(self) -> str:
+        """获取当前安全模式。"""
+        return self.security_mode
 
     def get_default_agent_id(self) -> str:
         """获取默认 Agent ID。"""
@@ -61,6 +86,6 @@ class PermissionStorage:
         self._cache = None
 
 
-def create_permission_storage() -> PermissionStorage:
+def create_permission_storage(security_mode: Optional[str] = None) -> PermissionStorage:
     """创建权限存储实例。"""
-    return PermissionStorage()
+    return PermissionStorage(security_mode=security_mode)

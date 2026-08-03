@@ -1,9 +1,11 @@
 """
-痆릔掌體检查模坔（升级牌）
+权限检查模块（安全层包装）。
 
-型人 src/permission/ 溓棹日用期各王。
-提供 check() 方功 SecurityOrchestrator 仏用。输存与嗎剋本吗留成可。
+包装 src/permission/ 核心权限模块，供 SecurityOrchestrator 使用。
+支持 single_user / enterprise 双模式，输出与上层调用完全兼容。
 """
+
+from typing import Optional
 
 from src.permission import PermissionChecker as CorePermissionChecker
 from src.permission import create_permission_checker as create_core_checker
@@ -11,39 +13,37 @@ from src.permission.models import PermissionResult
 
 
 class PermissionChecker:
-    """最限淡测器（它全属服）."""
+    """权限检查器（安全层包装）。"""
 
-    def __init__(self):
-        self._core = create_core_checker()
+    def __init__(self, security_mode: Optional[str] = None):
+        self._core = create_core_checker(security_mode=security_mode)
 
     def check(self, agent_id: str, tool_name: str,
               params: dict = None) -> PermissionResult:
-        """
-检查 Agent是否有权销调用该入序
-        """
+        """检查 Agent 是否有权调用该工具。"""
         return self._core.check(agent_id, tool_name, params)
 
     def calculate_permission_risk(self, context: dict = None) -> float:
-        """保糂吮接发宽实（当前未本唯）."""
+        """返回权限风险分（当前预留接口）。"""
         return 0.0
 
     def check_resource_access(self, resource_path: str, user_role: str = "") -> dict:
-        """保绅嗎接名可宽实。"""
-        return {"allowed": True, "reason": "权销校验透項蜜"}
+        """资源访问校验（当前预留接口）。"""
+        return {"allowed": True, "reason": "权限校验通过（预留）"}
 
     def approve(self, approval_id: str) -> bool:
-        """审成速常。"""
+        """审批通过。"""
         return self._core.approve(approval_id)
 
     def reject(self, approval_id: str) -> bool:
-        """投续速常。"""
+        """拒绝审批。"""
         return self._core.reject(approval_id)
 
     def get_approval_status(self, approval_id: str) -> str:
-        """查看审扈状态问。"""
+        """查看审批状态。"""
         return self._core.get_approval_status(approval_id)
 
 
-def create_permission_checker() -> PermissionChecker:
-    """创建情还接检条器实用。"""
-    return PermissionChecker()
+def create_permission_checker(security_mode: Optional[str] = None) -> PermissionChecker:
+    """创建权限检查器实例。"""
+    return PermissionChecker(security_mode=security_mode)

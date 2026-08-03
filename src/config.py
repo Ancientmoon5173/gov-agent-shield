@@ -39,6 +39,15 @@ PROMPT_INJECTION_THRESHOLD = float(
 )
 SENSITIVE_LEVELS = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 
+# 安全运行模式
+# single_user: 单人办公助手模式（默认），未登记 agent 使用 owner 全权限兜底
+# enterprise : 企业多角色模式，未登记 agent 返回空权限，全部工具默认拦截
+SECURITY_MODES = ("single_user", "enterprise")
+_security_mode = os.getenv("GOVAGENT_SECURITY_MODE", "single_user")
+if _security_mode not in SECURITY_MODES:
+    _security_mode = "single_user"
+SECURITY_MODE = _security_mode
+
 # 保留旧阈值常量（向后兼容）
 RISK_THRESHOLD_LOW = 0.3
 RISK_THRESHOLD_MEDIUM = 0.6

@@ -1,0 +1,41 @@
+{
+  "id": "govagent-shield",
+  "name": "GovAgent-Shield",
+  "description": "政企 Agent 工具调用安全防护 Runtime 层：在工具执行前调用 GovAgent-Shield Python 安全服务。",
+  "activation": {
+    "onStartup": true
+  },
+  "enabledByDefault": true,
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "是否启用安全检测。关闭后工具调用直接放行。"
+      },
+      "endpoint": {
+        "type": "string",
+        "default": "http://127.0.0.1:8000",
+        "description": "GovAgent-Shield Python 安全服务地址。"
+      },
+      "timeoutMs": {
+        "type": "number",
+        "default": 5000,
+        "description": "安全检测请求超时（毫秒）。"
+      },
+      "failClosed": {
+        "type": "boolean",
+        "default": true,
+        "description": "安全服务不可用或返回未知动作时是否默认阻断。"
+      },
+      "logLevel": {
+        "type": "string",
+        "enum": ["debug", "info", "warn", "error"],
+        "default": "info",
+        "description": "插件日志级别。"
+      }
+    }
+  }
+}

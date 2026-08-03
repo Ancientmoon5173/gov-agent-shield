@@ -59,6 +59,14 @@ class SecurityCheckRequest(BaseModel):
     timestamp: str = ""
 
 
+class SecurityOutputCheckRequest(BaseModel):
+    """OpenClaw 适配层输出安全检测请求。"""
+    tool_name: str
+    output_text: str
+    session_id: str = ""
+    context: dict = {}
+
+
 # ========================
 # 根路径
 # ========================
@@ -179,6 +187,22 @@ def security_check_tool(req: SecurityCheckRequest):
     # 补充决策字段（OpenClaw 侧需要）
     result.setdefault("defense_stage", "risk_engine")
     result.setdefault("decision_reason", result.get("reason", ""))
+    return result
+
+
+@app.post("/security/check_output")
+def security_check_output(req: SecurityOutputCheckRequest):
+    """
+    OpenClaw 适配层输出安全检测接口。
+
+    调用 SecurityOrchestrator.check_output() 检测工具输出中的敏感数据。
+    """
+    orch = get_security_orchestrator()
+    result = orch.check_output(
+        session_id=req.session_id or "default",
+        tool_name=req.tool_name,
+        output_text=req.output_text,
+    )
     return result
 
 

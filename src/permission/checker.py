@@ -17,10 +17,12 @@ class PermissionChecker:
 
     def __init__(self, storage: Optional[PermissionStorage] = None,
                  policy_engine: Optional[PolicyEngine] = None,
-                 approval_manager: Optional[ApprovalManager] = None):
-        self.storage = storage or create_permission_storage()
+                 approval_manager: Optional[ApprovalManager] = None,
+                 security_mode: Optional[str] = None):
+        self.storage = storage or create_permission_storage(security_mode=security_mode)
         self.policy_engine = policy_engine or create_policy_engine()
         self.approval_manager = approval_manager or ApprovalManager()
+        self.security_mode = self.storage.get_security_mode()
 
     def check(self, agent_id: str, tool_name: str,
               params: dict = None) -> PermissionResult:
@@ -88,6 +90,6 @@ class PermissionChecker:
         return self.approval_manager.check(approval_id)
 
 
-def create_permission_checker() -> PermissionChecker:
+def create_permission_checker(security_mode: Optional[str] = None) -> PermissionChecker:
     """创建权限检查器实例。"""
-    return PermissionChecker()
+    return PermissionChecker(security_mode=security_mode)

@@ -6,5 +6,12 @@
 
 from .scorer import RiskScorer
 from .actions import RiskAction, DispositionEngine
+from .actions import PASSING_ACTIONS, BLOCKING_ACTIONS
 
-__all__ = ["RiskScorer", "RiskAction", "DispositionEngine"]
+__all__ = [
+    "RiskScorer",
+    "RiskAction",
+    "DispositionEngine",
+    "PASSING_ACTIONS",
+    "BLOCKING_ACTIONS",
+]

@@ -1,7 +1,8 @@
 /**
  * GovAgent-Shield OpenClaw 插件本地类型定义。
  *
- * ToolRequest 与 Python 端 src/runtime/tool_request.py 对齐。
+ * ToolRequest 与 Python 端 src/runtime/tool_request.py 对齐；
+ * ShieldAction / ShieldDecision 统一引用 decision.ts，避免重复定义。
  */
 
 export interface ToolRequest {
@@ -13,15 +14,4 @@ export interface ToolRequest {
   timestamp: string;
 }
 
-export type ShieldAction = "allow" | "block" | "kill" | "review";
-
-export interface ShieldDecision {
-  decision: ShieldAction;
-  action: string;
-  blocked: boolean;
-  reason: string;
-  risk_score: number;
-  risk_level: string;
-  defense_stage?: string;
-  decision_reason?: string;
-}
+export type { ShieldAction, ShieldDecision } from "./decision.js";

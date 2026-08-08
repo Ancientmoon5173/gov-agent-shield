@@ -3,13 +3,14 @@
  *
  * 验证：
  * - 插件通过 api.on 注册 before_tool_call / after_tool_call
- * - allow 放行、block/kill/review 阻断
+ * - allow/warn 放行、block 阻断、kill 终止、review 触发审批
  * - 未知 action 与 HTTP 异常 fail-close
  * - ToolRequest 携带真实 session_id / agent_id
  */
 
 import { describe, expect, it, vi } from "vitest";
 import { createGovAgentShieldHooks } from "../src/hooks.js";
+import { normalizeAction } from "../src/http_client.js";
 import { buildToolRequest } from "../src/tool_request.js";
 import type { PluginHookBeforeToolCallEvent, PluginHookToolContext } from "openclaw/plugin-sdk/types";
 
@@ -52,16 +53,31 @@ describe("buildToolRequest", () => {
 });
 
 describe("createGovAgentShieldHooks", () => {
+  it("warn 时放行，不返回阻断结果", async () => {
+    const hooks = createGovAgentShieldHooks({
+      httpClient: {
+        sendToolRequest: vi.fn().mockResolvedValue({
+          action: "warn",
+          reason: "低风险行为，已记录",
+          risk_score: 0.3,
+          risk_level: "MEDIUM",
+          policy_id: "disposition:warn",
+        }),
+      },
+    });
+    const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
+    expect(result).toBeUndefined();
+  });
+
   it("allow 时放行，不返回阻断结果", async () => {
     const hooks = createGovAgentShieldHooks({
       httpClient: {
         sendToolRequest: vi.fn().mockResolvedValue({
-          decision: "allow",
           action: "allow",
-          blocked: false,
           reason: "",
           risk_score: 0,
           risk_level: "LOW",
+          policy_id: "disposition:allow",
         }),
       },
     });
@@ -73,12 +89,11 @@ describe("createGovAgentShieldHooks", () => {
     const hooks = createGovAgentShieldHooks({
       httpClient: {
         sendToolRequest: vi.fn().mockResolvedValue({
-          decision: "block",
           action: "block",
-          blocked: true,
           reason: "检测到诱饵敏感资源",
           risk_score: 0.85,
           risk_level: "CRITICAL",
+          policy_id: "decoy:block",
         }),
       },
     });
@@ -91,46 +106,46 @@ describe("createGovAgentShieldHooks", () => {
     const hooks = createGovAgentShieldHooks({
       httpClient: {
         sendToolRequest: vi.fn().mockResolvedValue({
-          decision: "kill",
           action: "kill",
-          blocked: true,
           reason: "行为链检测到数据外传",
           risk_score: 1,
           risk_level: "CRITICAL",
+          policy_id: "disposition:kill",
         }),
       },
     });
     const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
     expect(result?.block).toBe(true);
+    expect(result?.terminate).toBe(true);
   });
 
-  it("review 当前阶段按阻断处理", async () => {
+  it("review 触发 requireApproval 审批流程", async () => {
     const hooks = createGovAgentShieldHooks({
       httpClient: {
         sendToolRequest: vi.fn().mockResolvedValue({
-          decision: "review",
           action: "review",
-          blocked: false,
           reason: "需要人工审批",
           risk_score: 0.6,
           risk_level: "HIGH",
+          policy_id: "permission:review",
         }),
       },
     });
     const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
-    expect(result?.block).toBe(true);
+    expect(result?.block).toBeUndefined();
+    expect(result?.requireApproval).toBeDefined();
+    expect(result?.requireApproval?.title).toBe("GovAgent-Shield 安全审批");
   });
 
   it("未知 action 默认阻断（fail-close）", async () => {
     const hooks = createGovAgentShieldHooks({
       httpClient: {
         sendToolRequest: vi.fn().mockResolvedValue({
-          decision: "block",
           action: "weird-action",
-          blocked: true,
           reason: "未知安全动作，按阻断处理",
           risk_score: 1,
           risk_level: "CRITICAL",
+          policy_id: "invalid_decision_contract",
         }),
       },
     });
@@ -158,5 +173,30 @@ describe("createGovAgentShieldHooks", () => {
     const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
     expect(result).toBeUndefined();
     expect(sendToolRequest).not.toHaveBeenCalled();
+  });
+});
+
+describe("normalizeAction", () => {
+  it("支持 warn 且大小写兼容", () => {
+    expect(normalizeAction("warn")).toBe("warn");
+    expect(normalizeAction("WARN")).toBe("warn");
+    expect(normalizeAction("Warn")).toBe("warn");
+  });
+
+  it("支持 allow / block / review / kill 且大小写兼容", () => {
+    expect(normalizeAction("allow")).toBe("allow");
+    expect(normalizeAction("ALLOW")).toBe("allow");
+    expect(normalizeAction("block")).toBe("block");
+    expect(normalizeAction("BLOCK")).toBe("block");
+    expect(normalizeAction("review")).toBe("review");
+    expect(normalizeAction("REVIEW")).toBe("review");
+    expect(normalizeAction("kill")).toBe("kill");
+    expect(normalizeAction("KILL")).toBe("kill");
+  });
+
+  it("未知值保持 fail-close 返回 block", () => {
+    expect(normalizeAction("unknown-action")).toBe("block");
+    expect(normalizeAction(undefined)).toBe("block");
+    expect(normalizeAction("")).toBe("block");
   });
 });

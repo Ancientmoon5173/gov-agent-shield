@@ -18,6 +18,7 @@ from src.input_guard.rules import get_default_detector
 from src.tool_gateway import ToolGateway
 from src.tool_gateway.policies import get_default_gateway
 from src.risk_engine import RiskScorer, DispositionEngine
+from src.risk_engine.actions import PASSING_ACTIONS, BLOCKING_ACTIONS
 from src.config import RISK_THRESHOLD_LOW, RISK_THRESHOLD_MEDIUM, RISK_THRESHOLD_HIGH
 
 from .tool_risk_config import TOOL_RISK_CONFIG
@@ -138,7 +139,7 @@ class SecurityOrchestrator:
         )
 
         disposition = self._map_disposition(risk["total_score"], risk["level"])
-        passed = disposition["action"] in ("allow", "review", "warn")
+        passed = disposition["action"] in PASSING_ACTIONS
 
         self.security_logger.log_check(
             session_id=session_id, check_type="input",
@@ -232,6 +233,7 @@ class SecurityOrchestrator:
                 "blocked": True, "risk_score": 1.0, "risk_level": "VERY_HIGH",
                 "action": "block", "action_name": "阻断",
                 "reason": perm_result.reason,
+                "policy_id": "permission:block",
                 "dimensions": {"R_permission": 1.0}, "param_findings": [],
                 "behavior": behavior_result,
                 "decoy": decoy_result,
@@ -251,6 +253,7 @@ class SecurityOrchestrator:
                 "blocked": False, "risk_score": 0.7, "risk_level": "HIGH",
                 "action": "review", "action_name": "审批",
                 "reason": perm_result.reason,
+                "policy_id": "permission:review",
                 "dimensions": {"R_permission": 0.7}, "param_findings": [],
                 "behavior": behavior_result,
                 "decoy": decoy_result,
@@ -270,7 +273,7 @@ class SecurityOrchestrator:
 
         # 7. 处置决策（传入 decoy_context 给 DecoyTriggered 策略）
         disposition = self.disposition_engine.decide(risk, decoy_context)
-        blocked = disposition["action"] in ("block", "kill")
+        blocked = disposition["action"] in BLOCKING_ACTIONS
 
         # 8. 日志记录
         self.security_logger.log_check(
@@ -307,6 +310,7 @@ class SecurityOrchestrator:
             "action": disposition["action"],
             "action_name": disposition["action_name"],
             "reason": disposition["reason"],
+            "policy_id": disposition.get("policy_id", "disposition:unknown"),
             "dimensions": risk["dimensions"],
             "param_findings": param_result.get("findings", []),
             "behavior": behavior_result,
@@ -336,6 +340,7 @@ class SecurityOrchestrator:
                 "risk_score": risk["total_score"],
                 "risk_level": risk["level"],
                 "action": "masked",
+                "policy_id": "output:masked",
                 "findings": scan_result["findings"],
                 "masked_output": masked,
             }
@@ -345,22 +350,15 @@ class SecurityOrchestrator:
             "risk_score": 0.0,
             "risk_level": "LOW",
             "action": "allow",
+            "policy_id": "output:allow",
             "findings": [],
             "masked_output": output_text,
         }
 
     def _map_disposition(self, score: float, level: str) -> Dict[str, str]:
-        """常规 5 级映射（不含 DecoyTriggered 策略）。"""
-        if level == "CRITICAL":
-            return {"action": "kill", "action_name": "熔断", "reason": "检测到严重安全攻击，已终止任务"}
-        elif level == "VERY_HIGH":
-            return {"action": "block", "action_name": "阻断", "reason": "检测到高风险操作，已阻断"}
-        elif level == "HIGH":
-            return {"action": "review", "action_name": "审批", "reason": "检测到可疑行为，需要人工确认"}
-        elif level == "MEDIUM":
-            return {"action": "warn", "action_name": "告警", "reason": "检测到低风险行为，已记录"}
-        else:
-            return {"action": "allow", "action_name": "放行", "reason": "安全检测通过"}
+        """兼容辅助：委托给 DispositionEngine，保证 action 唯一来源。"""
+        risk = {"total_score": score, "level": level}
+        return self.disposition_engine.decide(risk)
 
     def start_session(self, session_id: str) -> None:
         """初始化一个新会话。"""

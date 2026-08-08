@@ -14,6 +14,18 @@ class RiskAction(Enum):
     KILL = "kill"
 
 
+# 决策动作集合（唯一来源，供 orchestrator 等模块做状态判断）
+PASSING_ACTIONS = {
+    RiskAction.ALLOW.value,
+    RiskAction.WARN.value,
+    RiskAction.REVIEW.value,
+}
+BLOCKING_ACTIONS = {
+    RiskAction.BLOCK.value,
+    RiskAction.KILL.value,
+}
+
+
 class DispositionEngine:
     """处置决策引擎，含DecoyTriggered策略。"""
 
@@ -39,25 +51,28 @@ class DispositionEngine:
         if authorized:
             return dict(action="review", action_name="审批",
                         reason=f"授权用户访问诱饵资源: {resource}",
-                        risk_level="VERY_HIGH", risk_score=0.85, decoy_triggered=True)
+                        risk_level="VERY_HIGH", risk_score=0.85, decoy_triggered=True,
+                        policy_id="decoy:authorized_review")
         if has_upload:
             return dict(action="kill", action_name="熔断",
                         reason=f"诱饵碰触+外传行为: {detail}",
-                        risk_level="CRITICAL", risk_score=1.0, decoy_triggered=True)
+                        risk_level="CRITICAL", risk_score=1.0, decoy_triggered=True,
+                        policy_id="decoy:kill")
         return dict(action="block", action_name="阻断",
                     reason=f"访问诱饵敏感资源: {detail}",
-                    risk_level="CRITICAL", risk_score=1.0, decoy_triggered=True)
+                    risk_level="CRITICAL", risk_score=1.0, decoy_triggered=True,
+                    policy_id="decoy:block")
 
     def _default_strategy(self, risk: Dict[str, Any]) -> Dict[str, Any]:
         score = risk.get("total_score", 0)
         level = risk.get("level", "LOW")
         if level == "CRITICAL":
-            return dict(action="kill", action_name="熔断", reason="严重安全攻击，已终止", risk_level=level, risk_score=score, decoy_triggered=False)
+            return dict(action="kill", action_name="熔断", reason="严重安全攻击，已终止", risk_level=level, risk_score=score, decoy_triggered=False, policy_id="disposition:kill")
         elif level == "VERY_HIGH":
-            return dict(action="block", action_name="阻断", reason="高风险操作，已阻断", risk_level=level, risk_score=score, decoy_triggered=False)
+            return dict(action="block", action_name="阻断", reason="高风险操作，已阻断", risk_level=level, risk_score=score, decoy_triggered=False, policy_id="disposition:block")
         elif level == "HIGH":
-            return dict(action="review", action_name="审批", reason="可疑行为，需要确认", risk_level=level, risk_score=score, decoy_triggered=False)
+            return dict(action="review", action_name="审批", reason="可疑行为，需要确认", risk_level=level, risk_score=score, decoy_triggered=False, policy_id="disposition:review")
         elif level == "MEDIUM":
-            return dict(action="warn", action_name="告警", reason="低风险行为，已记录", risk_level=level, risk_score=score, decoy_triggered=False)
+            return dict(action="warn", action_name="告警", reason="低风险行为，已记录", risk_level=level, risk_score=score, decoy_triggered=False, policy_id="disposition:warn")
         else:
-            return dict(action="allow", action_name="放行", reason="安全检测通过", risk_level=level, risk_score=score, decoy_triggered=False)
+            return dict(action="allow", action_name="放行", reason="安全检测通过", risk_level=level, risk_score=score, decoy_triggered=False, policy_id="disposition:allow")

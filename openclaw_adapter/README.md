@@ -1,5 +1,17 @@
 # GovAgent-Shield OpenClaw 适配层
 
+> **DEPRECATED**
+>
+> 该模块为早期实验方案，已不再作为正式接入方式。
+> 当前正式方案是 OpenClaw 原生插件：
+>
+> ```text
+> openclaw_plugin/govagent-shield
+> ```
+>
+> 请勿再修改 `agent-harness.ts` 来注入本适配器；新项目请直接使用
+> `openclaw_plugin/govagent-shield`。本目录仅作历史参考保留。
+
 ## 目标
 
 将 GovAgent-Shield 作为 Runtime 安全层接入 OpenClaw Agent。
@@ -36,7 +48,10 @@ openclaw_adapter/
 └── README.md
 ```
 
-## 接入 OpenClaw
+## 接入 OpenClaw（历史参考，已不推荐）
+
+> 注意：以下内容仅为早期实验记录，不推荐按此方式修改
+> `agent-harness.ts`。正式接入请使用 `openclaw_plugin/govagent-shield`。
 
 ### 1. 安装依赖
 

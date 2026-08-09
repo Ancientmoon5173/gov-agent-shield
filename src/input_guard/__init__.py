@@ -6,5 +6,16 @@
 
 from .detector import InputDetector
 from .rules import InjectionRule
+from .input_risk_context import (
+    InputRiskContext,
+    InputRiskContextStore,
+    create_input_risk_context_store,
+)
 
-__all__ = ["InputDetector", "InjectionRule"]
+__all__ = [
+    "InputDetector",
+    "InjectionRule",
+    "InputRiskContext",
+    "InputRiskContextStore",
+    "create_input_risk_context_store",
+]

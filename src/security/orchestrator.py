@@ -19,7 +19,12 @@ from src.tool_gateway import ToolGateway
 from src.tool_gateway.policies import get_default_gateway
 from src.risk_engine import RiskScorer, DispositionEngine
 from src.risk_engine.actions import PASSING_ACTIONS, BLOCKING_ACTIONS
-from src.config import RISK_THRESHOLD_LOW, RISK_THRESHOLD_MEDIUM, RISK_THRESHOLD_HIGH
+from src.config import (
+    RISK_THRESHOLD_LOW,
+    RISK_THRESHOLD_MEDIUM,
+    RISK_THRESHOLD_HIGH,
+    PERMISSION_FORCE_BLOCK,
+)
 
 from .tool_risk_config import TOOL_RISK_CONFIG
 from .parameter_checker import ParameterChecker, create_parameter_checker
@@ -28,7 +33,12 @@ from .output_guard import OutputGuard, create_output_guard
 from .security_logger import SecurityLogger, create_security_logger
 from .permission_checker import PermissionChecker, create_permission_checker
 from .decoy_manager import DecoyManager, create_decoy_manager
+from .data_classifier import DataClassifier, create_data_classifier
 from src.input_guard.sensitive_data_leak_detector import SensitiveDataLeakDetector
+from src.input_guard.input_risk_context import (
+    InputRiskContext,
+    create_input_risk_context_store,
+)
 
 
 # 五维风险融合权重
@@ -109,6 +119,7 @@ class SecurityOrchestrator:
         permission_checker: PermissionChecker = None,
         decoy_manager: DecoyManager = None,
         security_logger: SecurityLogger = None,
+        data_classifier: DataClassifier = None,
     ):
         self.input_detector = input_detector or get_default_detector()
         self.tool_gateway = tool_gateway or get_default_gateway()
@@ -118,12 +129,22 @@ class SecurityOrchestrator:
         self.permission_checker = permission_checker or create_permission_checker()
         self.decoy_manager = decoy_manager or create_decoy_manager()
         self.security_logger = security_logger or create_security_logger()
+        self.data_classifier = data_classifier or create_data_classifier()
         self.sensitive_data_leak_detector = SensitiveDataLeakDetector()
+        self.input_risk_store = create_input_risk_context_store()
 
         self.disposition_engine = DispositionEngine()
 
-    def check_input(self, session_id: str, user_input: str) -> Dict[str, Any]:
-        """检查用户输入安全性。"""
+    def check_input(self, session_id: str, user_input: str,
+                    context_text: str = "") -> Dict[str, Any]:
+        """
+        检查用户输入安全性，并生成 Input Risk Context。
+
+        Args:
+            session_id: 会话 ID
+            user_input: 用户输入
+            context_text: 可选上下文文本（知识库/文档内容污染检测）
+        """
         scan_result = self.input_detector.scan(user_input)
         leak_result = self.sensitive_data_leak_detector.scan(user_input)
         if leak_result["risk_score"] > scan_result.get("risk_score", 0):
@@ -133,6 +154,39 @@ class SecurityOrchestrator:
                 scan_result["findings"].append(f)
         r_input = scan_result.get("risk_score", 0.0)
 
+        # 输入风险上下文（Runtime Risk Context）
+        context_source = "user_input"
+        if context_text:
+            ctx_scan = self.input_detector.scan(context_text)
+            ctx_leak = self.sensitive_data_leak_detector.scan(context_text)
+            if ctx_scan.get("findings") or ctx_leak.get("findings"):
+                context_source = "document_context"
+            for ctx_f in ctx_scan.get("findings", []) + ctx_leak.get("findings", []):
+                scan_result.setdefault("findings", []).append(ctx_f)
+            ctx_risk = max(
+                ctx_scan.get("risk_score", 0.0),
+                ctx_leak.get("risk_score", 0.0),
+            )
+            r_input = max(r_input, ctx_risk)
+            scan_result["risk_score"] = r_input
+
+        risk_type = self._derive_input_risk_type(
+            findings=scan_result.get("findings", []),
+            has_context=bool(context_text),
+        )
+        self.input_risk_store.set(
+            session_id,
+            InputRiskContext(
+                source=context_source,
+                risk_type=risk_type,
+                risk_score=r_input,
+                findings=[
+                    f.get("detail", f.get("rule_name", ""))
+                    for f in scan_result.get("findings", [])
+                ],
+            ),
+        )
+
         risk = _calculate_final_risk(
             r_input=r_input, r_tool=0.0, r_output=0.0,
             r_behavior=0.0, r_decoy=0.0,
@@ -141,11 +195,25 @@ class SecurityOrchestrator:
         disposition = self._map_disposition(risk["total_score"], risk["level"])
         passed = disposition["action"] in PASSING_ACTIONS
 
+        # 审计：事件类型推导
+        findings_types = {
+            f.get("type") for f in scan_result.get("findings", [])
+        }
+        if "data_exfiltration" in findings_types:
+            event_type = "data_exfiltration"
+        elif findings_types & {"jailbreak", "command_override", "prompt_injection"}:
+            event_type = "prompt_injection"
+        else:
+            event_type = "input_risk"
+
         self.security_logger.log_check(
             session_id=session_id, check_type="input",
             input_text=user_input, risk_score=risk["total_score"],
             risk_level=risk["level"], disposition=disposition["action"],
             details={"dimensions": risk["dimensions"], "findings": scan_result.get("findings", [])},
+            event_type=event_type,
+            decision_reason=disposition.get("reason", ""),
+            defense_stage="input_guard",
         )
 
         return {
@@ -179,6 +247,14 @@ class SecurityOrchestrator:
         # 1. 参数风险
         param_result = self.parameter_checker.check(tool_name, params)
         r_tool = min(r_tool_base + param_result["risk_score"], 1.0)
+
+        # 1.1 数据分级（作为 tool risk 修正因素，不新增风险维度）
+        data_result = self.data_classifier.classify(tool_name, params)
+        data_context = {
+            "data_class": data_result["data_class"],
+            "data_findings": data_result["findings"],
+        }
+        r_tool = max(r_tool, data_result["risk_score"])
 
         # 2. 行为链风险
         self.behavior_analyzer.record_call(session_id, tool_name, params)
@@ -215,56 +291,114 @@ class SecurityOrchestrator:
                 risk_score=1.0, risk_level="CRITICAL",
                 disposition="detected",
                 details=behavior_event,
+                event_type="tool_risk",
+                defense_stage="decoy_manager",
             )
 
-        # 5. 权限检查（升级）
+        # 5. 权限检查（策略提供器）
         perm_result = self.permission_checker.check(agent_id, tool_name, params)
         perm_action = perm_result.action
+        perm_policy = (
+            self.permission_checker.to_policy_dict(agent_id)
+            if hasattr(self.permission_checker, "to_policy_dict")
+            else {}
+        )
 
-        # 权限不足 -> 直接阻断
-        if perm_action == "block":
-            self.security_logger.log_check(
-                session_id=session_id, check_type="permission",
-                tool_name=tool_name, tool_params=params,
-                risk_score=1.0, risk_level="VERY_HIGH", disposition="block",
-                details={"reason": perm_result.reason},
-            )
-            return {
-                "blocked": True, "risk_score": 1.0, "risk_level": "VERY_HIGH",
-                "action": "block", "action_name": "阻断",
-                "reason": perm_result.reason,
-                "policy_id": "permission:block",
-                "dimensions": {"R_permission": 1.0}, "param_findings": [],
-                "behavior": behavior_result,
-                "decoy": decoy_result,
-            "defense_stage": "permission_checker",
-            "decision_reason": perm_result.reason,
-            }
+        if PERMISSION_FORCE_BLOCK:
+            # 兼容模式：权限层直接阻断/审批（保持原行为）
+            if perm_action == "block":
+                self.security_logger.log_check(
+                    session_id=session_id, check_type="permission",
+                    tool_name=tool_name, tool_params=params,
+                    risk_score=1.0, risk_level="VERY_HIGH", disposition="block",
+                    details={"reason": perm_result.reason, "policy": perm_policy},
+                    event_type="permission_violation",
+                    policy_id="permission:block",
+                    decision_reason=perm_result.reason,
+                    defense_stage="permission_checker",
+                    chain_summary=self._build_chain_summary(session_id),
+                )
+                return {
+                    "blocked": True, "risk_score": 1.0, "risk_level": "VERY_HIGH",
+                    "action": "block", "action_name": "阻断",
+                    "reason": perm_result.reason,
+                    "policy_id": "permission:block",
+                    "dimensions": {"R_permission": 1.0}, "param_findings": [],
+                    "behavior": behavior_result,
+                    "decoy": decoy_result,
+                    "permission_policy": perm_policy,
+                    "defense_stage": "permission_checker",
+                    "decision_reason": perm_result.reason,
+                }
 
-        # 需要审批
-        if perm_action == "review":
-            self.security_logger.log_check(
-                session_id=session_id, check_type="permission",
-                tool_name=tool_name, tool_params=params,
-                risk_score=0.7, risk_level="HIGH", disposition="review",
-                details={"approval_id": perm_result.approval_id, "reason": perm_result.reason},
-            )
-            return {
-                "blocked": False, "risk_score": 0.7, "risk_level": "HIGH",
-                "action": "review", "action_name": "审批",
-                "reason": perm_result.reason,
-                "policy_id": "permission:review",
-                "dimensions": {"R_permission": 0.7}, "param_findings": [],
-                "behavior": behavior_result,
-                "decoy": decoy_result,
-                "approval_id": perm_result.approval_id,
-            "defense_stage": "permission_checker",
-            "decision_reason": perm_result.reason,
+            if perm_action == "review":
+                self.security_logger.log_check(
+                    session_id=session_id, check_type="permission",
+                    tool_name=tool_name, tool_params=params,
+                    risk_score=0.7, risk_level="HIGH", disposition="review",
+                    details={
+                        "approval_id": perm_result.approval_id,
+                        "reason": perm_result.reason,
+                        "policy": perm_policy,
+                    },
+                    event_type="permission_violation",
+                    policy_id="permission:review",
+                    decision_reason=perm_result.reason,
+                    defense_stage="permission_checker",
+                    chain_summary=self._build_chain_summary(session_id),
+                )
+                return {
+                    "blocked": False, "risk_score": 0.7, "risk_level": "HIGH",
+                    "action": "review", "action_name": "审批",
+                    "reason": perm_result.reason,
+                    "policy_id": "permission:review",
+                    "dimensions": {"R_permission": 0.7}, "param_findings": [],
+                    "behavior": behavior_result,
+                    "decoy": decoy_result,
+                    "approval_id": perm_result.approval_id,
+                    "permission_policy": perm_policy,
+                    "defense_stage": "permission_checker",
+                    "decision_reason": perm_result.reason,
+                }
+
+            r_permission = 0.0
+            perm_context = {
+                "action": "allow",
+                "policy": perm_policy,
+                "R_permission": 0.0,
             }
+        else:
+            # 信号化模式：权限结果转为风险维度，由 DispositionEngine 统一决策
+            r_permission = {"block": 0.9, "review": 0.6}.get(perm_action, 0.0)
+            r_tool = max(r_tool, r_permission)
+            perm_context = {
+                "action": perm_action,
+                "policy": perm_policy,
+                "R_permission": r_permission,
+            }
+            self.security_logger.log_check(
+                session_id=session_id, check_type="permission_signal",
+                tool_name=tool_name, tool_params=params,
+                risk_score=r_permission,
+                risk_level="HIGH" if r_permission >= 0.6 else "LOW",
+                disposition=perm_action,
+                details=perm_context,
+                event_type=(
+                    "permission_violation"
+                    if perm_action in ("block", "review")
+                    else "tool_risk"
+                ),
+                policy_id="permission:signal",
+                decision_reason=perm_result.reason,
+                defense_stage="permission_checker",
+                chain_summary=self._build_chain_summary(session_id),
+            )
 
         # 6. 综合评分（权限通过后）
+        input_context = self.input_risk_store.get(session_id)
+        r_input = input_context.boost() if input_context.risk_score > 0 else 0.0
         risk = _calculate_final_risk(
-            r_input=0.0,
+            r_input=r_input,
             r_tool=r_tool,
             r_output=0.0,
             r_behavior=behavior_result["behavior_score"],
@@ -274,6 +408,25 @@ class SecurityOrchestrator:
         # 7. 处置决策（传入 decoy_context 给 DecoyTriggered 策略）
         disposition = self.disposition_engine.decide(risk, decoy_context)
         blocked = disposition["action"] in BLOCKING_ACTIONS
+
+        # Determine defense_stage
+        if decoy_result.get("triggered"):
+            defense_stage = "decoy_manager"
+        elif param_result.get("findings"):
+            defense_stage = "parameter_checker"
+        elif behavior_result["behavior_score"] > 0:
+            defense_stage = "behavior_analyzer"
+        else:
+            defense_stage = "risk_engine"
+
+        # 审计：事件类型推导
+        event_type = self._resolve_event_type(
+            tool_name=tool_name,
+            data_class=data_context["data_class"],
+            behavior_score=behavior_result["behavior_score"],
+            decoy_triggered=decoy_result.get("triggered", False),
+            perm_action=perm_action,
+        )
 
         # 8. 日志记录
         self.security_logger.log_check(
@@ -288,18 +441,16 @@ class SecurityOrchestrator:
                 "behavior": behavior_result,
                 "decoy": decoy_result,
                 "disposition": disposition,
+                "permission": perm_context,
+                "data": data_context,
+                "input_context": input_context.to_dict(),
             },
+            event_type=event_type,
+            policy_id=disposition.get("policy_id", ""),
+            decision_reason=disposition.get("reason", ""),
+            defense_stage=defense_stage,
+            chain_summary=self._build_chain_summary(session_id),
         )
-
-        # Determine defense_stage
-        if decoy_result.get("triggered"):
-            defense_stage = "decoy_manager"
-        elif param_result.get("findings"):
-            defense_stage = "parameter_checker"
-        elif behavior_result["behavior_score"] > 0:
-            defense_stage = "behavior_analyzer"
-        else:
-            defense_stage = "risk_engine"
 
         return {
             "blocked": blocked,
@@ -315,6 +466,9 @@ class SecurityOrchestrator:
             "param_findings": param_result.get("findings", []),
             "behavior": behavior_result,
             "decoy": decoy_result,
+            "data_class": data_context["data_class"],
+            "data_findings": data_context["data_findings"],
+            "permission_policy": perm_policy,
         }
 
     def check_output(self, session_id: str, tool_name: str,
@@ -359,6 +513,47 @@ class SecurityOrchestrator:
         """兼容辅助：委托给 DispositionEngine，保证 action 唯一来源。"""
         risk = {"total_score": score, "level": level}
         return self.disposition_engine.decide(risk)
+
+    def _resolve_event_type(
+        self,
+        tool_name: str,
+        data_class: str,
+        behavior_score: float,
+        decoy_triggered: bool,
+        perm_action: str,
+    ) -> str:
+        """根据风险结果推导审计事件类型。"""
+        if perm_action == "block":
+            return "permission_violation"
+        if decoy_triggered:
+            return "tool_risk"
+        if behavior_score > 0:
+            return "behavior_chain"
+        if data_class in ("SENSITIVE", "CRITICAL") and tool_name == "upload_data":
+            return "data_exfiltration"
+        return "tool_risk"
+
+    def _build_chain_summary(self, session_id: str) -> str:
+        """从行为历史生成工具调用链摘要。"""
+        history = self.behavior_analyzer._history.get(session_id, [])
+        return " -> ".join(c["tool"] for c in history[-5:])
+
+    def _derive_input_risk_type(
+        self,
+        findings: list,
+        has_context: bool = False,
+    ) -> str:
+        """根据输入检测 findings 推导 Input Risk Context 风险类型。"""
+        finding_types = {f.get("type") for f in findings}
+        if "jailbreak" in finding_types:
+            return "jailbreak"
+        if finding_types & {"command_override", "prompt_injection"}:
+            return "prompt_injection"
+        if finding_types & {"data_exfiltration", "sensitive_request"}:
+            return "sensitive_instruction"
+        if has_context:
+            return "data_poisoning"
+        return "input_risk"
 
     def start_session(self, session_id: str) -> None:
         """初始化一个新会话。"""

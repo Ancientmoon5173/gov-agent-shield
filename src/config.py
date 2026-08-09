@@ -48,6 +48,42 @@ if _security_mode not in SECURITY_MODES:
     _security_mode = "single_user"
 SECURITY_MODE = _security_mode
 
+# 权限策略信号化开关
+# True  = 权限层保持直接阻断/审批（默认，行为不变）
+# False = 权限结果转为 R_permission 风险维度，由 DispositionEngine 统一决策
+PERMISSION_FORCE_BLOCK = (
+    os.getenv("GOVAGENT_PERMISSION_FORCE_BLOCK", "true").lower() == "true"
+)
+
+# 数据分级规则
+# data_class 与风险分对应，按 CRITICAL > SENSITIVE > INTERNAL > PUBLIC 优先级命中
+DATA_CLASS_RULES = {
+    "CRITICAL": {
+        "keywords": ["top secret", "绝密"],
+        "path_markers": ["top_secret"],
+        "risk_score": 0.9,
+    },
+    "SENSITIVE": {
+        "keywords": [
+            "customer", "citizen", "identity", "salary",
+            "secret", "confidential", "客户", "公民", "身份证",
+            "工资", "薪酬", "机密",
+        ],
+        "path_markers": ["secret", "confidential"],
+        "risk_score": 0.7,
+    },
+    "INTERNAL": {
+        "keywords": ["internal", "内部", "预算", "财务"],
+        "path_markers": ["internal"],
+        "risk_score": 0.4,
+    },
+    "PUBLIC": {
+        "keywords": [],
+        "path_markers": [],
+        "risk_score": 0.0,
+    },
+}
+
 # 保留旧阈值常量（向后兼容）
 RISK_THRESHOLD_LOW = 0.3
 RISK_THRESHOLD_MEDIUM = 0.6

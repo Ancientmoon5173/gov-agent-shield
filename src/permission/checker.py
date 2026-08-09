@@ -73,6 +73,10 @@ class PermissionChecker:
         """获取 Agent 的权限策略。"""
         return self.storage.get_policy(agent_id)
 
+    def to_policy_dict(self, agent_id: str) -> dict:
+        """返回 Agent 权限策略的只读字典（供评分与审计使用）。"""
+        return self.storage.get_policy(agent_id).to_dict()
+
     def list_policies(self) -> list:
         """列出所有可用策略。"""
         return self.storage.list_agents()

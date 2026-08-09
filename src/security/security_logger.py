@@ -37,22 +37,47 @@ class SecurityLogger:
                     risk_score REAL,
                     risk_level TEXT,
                     disposition TEXT,
-                    details TEXT
+                    details TEXT,
+                    event_type TEXT,
+                    policy_id TEXT,
+                    decision_reason TEXT,
+                    defense_stage TEXT,
+                    chain_summary TEXT
                 )
             """)
+            # 兼容旧库：逐列补齐缺失字段
+            for column in (
+                "event_type",
+                "policy_id",
+                "decision_reason",
+                "defense_stage",
+                "chain_summary",
+            ):
+                try:
+                    conn.execute(
+                        f"ALTER TABLE security_events ADD COLUMN {column} TEXT"
+                    )
+                except sqlite3.OperationalError:
+                    # 列已存在时忽略
+                    pass
             conn.commit()
 
     def log_check(self, session_id: str, check_type: str, input_text: str = "",
                   tool_name: str = "", tool_params: dict = None,
                   risk_score: float = 0.0, risk_level: str = "LOW",
-                  disposition: str = "allow", details: dict = None):
+                  disposition: str = "allow", details: dict = None,
+                  event_type: str = "", policy_id: str = "",
+                  decision_reason: str = "", defense_stage: str = "",
+                  chain_summary: str = ""):
         """记录一次安全检查事件。"""
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.execute(
                 """INSERT INTO security_events
                    (timestamp, session_id, check_type, input_text, tool_name,
-                    tool_params, risk_score, risk_level, disposition, details)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    tool_params, risk_score, risk_level, disposition, details,
+                    event_type, policy_id, decision_reason, defense_stage,
+                    chain_summary)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     datetime.now(timezone.utc).isoformat(),
                     session_id, check_type,
@@ -62,6 +87,8 @@ class SecurityLogger:
                     round(risk_score, 3),
                     risk_level, disposition,
                     json.dumps(details or {}, ensure_ascii=False),
+                    event_type, policy_id, decision_reason, defense_stage,
+                    chain_summary,
                 ),
             )
             conn.commit()

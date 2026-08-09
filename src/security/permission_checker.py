@@ -23,6 +23,10 @@ class PermissionChecker:
         """检查 Agent 是否有权调用该工具。"""
         return self._core.check(agent_id, tool_name, params)
 
+    def to_policy_dict(self, agent_id: str) -> dict:
+        """返回 Agent 权限策略的只读字典（供评分与审计使用）。"""
+        return self._core.to_policy_dict(agent_id)
+
     def calculate_permission_risk(self, context: dict = None) -> float:
         """返回权限风险分（当前预留接口）。"""
         return 0.0

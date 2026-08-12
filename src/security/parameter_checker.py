@@ -50,6 +50,11 @@ class ParameterChecker:
             risk += result["risk_score"]
             findings.extend(result["findings"])
 
+        elif tool_name == "exec":
+            result = self._check_exec(params, rules)
+            risk += result["risk_score"]
+            findings.extend(result["findings"])
+
         return {"risk_score": min(risk, 1.0), "findings": findings}
 
     def _check_read_document(self, params: Dict[str, Any], rules: dict) -> Dict:
@@ -113,6 +118,34 @@ class ParameterChecker:
             if pattern in target.lower():
                 risk += rules.get("target_penalty", 0.2)
                 findings.append(f"外部目标地址: {target}")
+                break
+
+        return {"risk_score": min(risk, 1.0), "findings": findings}
+
+    def _check_exec(self, params: Dict[str, Any], rules: dict) -> Dict:
+        """检测 exec 命令参数：删除/外发高危，读取类保持低风险。"""
+        risk = 0.0
+        findings = []
+        command = str(
+            params.get("command")
+            or params.get("cmdline")
+            or params.get("script")
+            or ""
+        )
+        if not command:
+            return {"risk_score": 0.0, "findings": []}
+
+        lower_command = command.lower()
+        for pattern in rules.get("destructive_patterns", []):
+            if pattern.lower() in lower_command:
+                risk += rules.get("destructive_penalty", 0.5)
+                findings.append(f"危险删除命令: {pattern.strip()}")
+                break
+
+        for pattern in rules.get("external_patterns", []):
+            if pattern.lower() in lower_command:
+                risk += rules.get("external_penalty", 0.3)
+                findings.append(f"外部网络/外发命令: {pattern.strip()}")
                 break
 
         return {"risk_score": min(risk, 1.0), "findings": findings}

@@ -91,6 +91,72 @@ describe("Decision Contract: Python → HTTP Client → Hook", () => {
     expect(result).toBeUndefined();
   });
 
+  it("allow + decoy_route → shadow execute（params 改写）", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      pythonResponse({
+        ...basePayload("allow"),
+        decoy_route: {
+          enabled: true,
+          original_target: "policy_document.txt",
+          redirect_target: "/engine/decoy/internal/policy_document.txt",
+          reason: "高风险会话访问敏感资产",
+          policy_id: "decoy_route:internal_document",
+          target_param: "file_path",
+        },
+      }),
+    );
+    const client = new ShieldHttpClient({ endpoint: ENDPOINT });
+    const hooks = createGovAgentShieldHooks({ httpClient: client });
+
+    const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
+
+    expect(result?.block).toBeUndefined();
+    expect(result?.params?.file_path).toBe(
+      "/engine/decoy/internal/policy_document.txt",
+    );
+  });
+
+  it("allow + inject_token → tool_result_persist 注入令牌", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      pythonResponse({
+        ...basePayload("allow"),
+        inject_token: {
+          token: "DPT-contract-001",
+          policy_id: "data_provenance:inject:sensitive",
+        },
+      }),
+    );
+    const client = new ShieldHttpClient({ endpoint: ENDPOINT });
+    const hooks = createGovAgentShieldHooks({ httpClient: client });
+
+    await hooks.beforeToolCall(makeEvent(), makeCtx());
+    const result = hooks.toolResultPersist(
+      {
+        toolName: "read_document",
+        toolCallId: "call-contract-001",
+        message: {
+          role: "toolResult",
+          toolCallId: "call-contract-001",
+          toolName: "read_document",
+          content: [{ type: "text", text: "内部资料" }],
+          details: {},
+          isError: false,
+          timestamp: 1,
+        },
+        isSynthetic: false,
+      } as never,
+      {} as never,
+    );
+
+    const content = result?.message?.content as Array<{
+      type: string;
+      text?: string;
+    }>;
+    expect(
+      content.some((block) => block.text?.includes("DPT-contract-001")),
+    ).toBe(true);
+  });
+
   it("warn → 放行（execute）并记录审计", async () => {
     vi.mocked(fetch).mockResolvedValue(
       pythonResponse(basePayload("warn")),
@@ -126,7 +192,7 @@ describe("Decision Contract: Python → HTTP Client → Hook", () => {
     expect(result?.requireApproval?.title).toBe("GovAgent-Shield 安全审批");
   });
 
-  it("block → blocked", async () => {
+  it("block → deny-only 审批（拒绝后阻断）", async () => {
     vi.mocked(fetch).mockResolvedValue(
       pythonResponse(basePayload("block")),
     );
@@ -135,11 +201,13 @@ describe("Decision Contract: Python → HTTP Client → Hook", () => {
 
     const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
 
-    expect(result?.block).toBe(true);
+    expect(result?.block).toBeUndefined();
     expect(result?.terminate).toBeUndefined();
+    expect(result?.requireApproval?.severity).toBe("critical");
+    expect(result?.requireApproval?.allowedDecisions).toEqual(["deny"]);
   });
 
-  it("kill → terminated", async () => {
+  it("kill → deny-only 审批并终止任务", async () => {
     vi.mocked(fetch).mockResolvedValue(
       pythonResponse(basePayload("kill")),
     );
@@ -148,8 +216,10 @@ describe("Decision Contract: Python → HTTP Client → Hook", () => {
 
     const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
 
-    expect(result?.block).toBe(true);
+    expect(result?.block).toBeUndefined();
     expect(result?.terminate).toBe(true);
+    expect(result?.requireApproval?.severity).toBe("critical");
+    expect(result?.requireApproval?.allowedDecisions).toEqual(["deny"]);
   });
 
   it("unknown action → fail-close block / invalid_decision_contract", async () => {

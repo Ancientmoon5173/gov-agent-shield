@@ -1,0 +1,28 @@
+{
+  "rules": [
+    {
+      "rule_id": "virtual-fin-001",
+      "target_tools": ["read_document", "list_directory", "search_files", "exec"],
+      "patterns": ["预算", "财务", "finance"],
+      "min_sensitivity": "HIGH",
+      "base_confidence": 0.3,
+      "risk_increment": 0.05
+    },
+    {
+      "rule_id": "virtual-staff-001",
+      "target_tools": ["read_document", "list_directory", "search_files", "exec"],
+      "patterns": ["员工", "人事", "工资", "salary"],
+      "min_sensitivity": "CRITICAL",
+      "base_confidence": 0.35,
+      "risk_increment": 0.05
+    },
+    {
+      "rule_id": "virtual-customer-001",
+      "target_tools": ["read_document", "list_directory", "search_files", "exec"],
+      "patterns": ["客户", "customer"],
+      "min_sensitivity": "SENSITIVE",
+      "base_confidence": 0.3,
+      "risk_increment": 0.05
+    }
+  ]
+}

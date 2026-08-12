@@ -126,8 +126,9 @@ Python 引擎（`src/security`）负责：
 一次 ToolCall 的安全检测链路：
 
 ```
-InputGuard → ParameterChecker → BehaviorAnalyzer → DataClassifier
-→ DecoyManager → PermissionChecker → RiskScorer → DispositionEngine → AuditLogger
+InputGuard → ParameterChecker → DataClassifier → AssetResolver
+→ BehaviorAnalyzer → BehaviorObserver → DecoyManager
+→ PermissionChecker → RiskScorer → DispositionEngine → AuditLogger
 ```
 
 | 模块 | 职责 |
@@ -136,11 +137,34 @@ InputGuard → ParameterChecker → BehaviorAnalyzer → DataClassifier
 | ParameterChecker | 路径穿越、敏感词、批量查询、外部目标 |
 | BehaviorAnalyzer | 单步行为与连续行为链 |
 | DataClassifier | 数据分级：PUBLIC / INTERNAL / SENSITIVE / CRITICAL |
-| DecoyManager | 诱饵资源触碰信号 |
+| AssetResolver | 资产身份识别：财务/人事/客户/合同等资产标签 |
+| BehaviorObserver | 行为特征观察：虚拟诱饵规则，低权重风险信号 |
+| DecoyManager | 静态诱饵触碰检测 + Shadow Decoy 路由决策 |
+| DecoyCopyGenerator | 会话级诱饵副本生成与 DPT 令牌预埋 |
+| DataProvenance | 数据溯源令牌注册与外发/写入参数扫描 |
 | PermissionChecker | 权限策略（single_user / enterprise） |
 | RiskScorer | 多维风险融合评分 |
 | DispositionEngine | 最终决策：allow / warn / review / block / kill |
 | AuditLogger | SQLite 审计事件记录 |
+
+---
+
+## 4.1 Decoy ABC 组合防御
+
+诱饵防御采用"行为预判 → 执行重定向 → 令牌追踪"三阶段闭环：
+
+1. **B 行为特征诱饵**：`BehaviorObserver` 对敏感资产访问输出
+   `decoy_virtual_hit` 低权重风险信号（不阻断），累积会话风险。
+2. **A Shadow Decoy 路由**：高风险会话 + 敏感资产命中且工具为读取类时，
+   `DecoyManager.build_route` 生成重定向建议；真实启用时由
+   `DecoyCopyGenerator` 创建引擎侧会话副本并预埋数据溯源令牌，
+   Agent 读取到的结果天然携带令牌。
+3. **C 数据溯源令牌**：`DataProvenanceTracker` 维护活跃令牌；
+   外发/写入类工具（含 `exec`）参数命中令牌时阻断并记录
+   `data_provenance_leak_detected`。
+
+OpenClaw 插件侧，`block` / `kill` 决策通过 deny-only 审批弹窗执行：
+仅提供"拒绝"选项，用户确认后工具才被阻断，保持强制阻断语义。
 
 ---
 
@@ -179,10 +203,10 @@ InputGuard → ParameterChecker → BehaviorAnalyzer → DataClassifier
 ### Demo 5：异常命令执行
 
 - 攻击行为：Agent 尝试执行系统命令
-- 触发 Tool：命令执行类工具（真实 OpenClaw `bash/exec` 接入）
-- 检测模块：工具参数风险 + 行为链
+- 触发 Tool：命令执行类工具（真实 OpenClaw `exec` 接入）
+- 检测模块：ParameterChecker（删除/外发命令加分）+ AssetResolver + BehaviorObserver + DecoyManager + DataProvenance
 - 最终决策：`block` / `kill`
-- 说明：命令类工具的真实接入依赖 OpenClaw 工具名映射，当前属于规划中能力。
+- 说明：`exec` 命令参数已纳入通用文件引用解析，诱饵文件名出现在命令中即可命中。
 
 ---
 

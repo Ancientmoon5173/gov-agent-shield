@@ -15,6 +15,48 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 AUDIT_DIR = DATA_DIR / "audit_logs"
 DECOY_DIR = DATA_DIR / "decoy"
+ASSET_CATALOG_PATH = DATA_DIR / "asset_catalog.json"
+DECOY_VIRTUAL_RULES_PATH = DATA_DIR / "decoy_virtual_rules.json"
+DECOY_ROUTE_MAPPING_PATH = DATA_DIR / "decoy_route_mapping.json"
+
+# Shadow Decoy（decoy_route）配置
+DECOY_ROUTE_CONFIG = {
+    "enabled": True,
+    "dry_run": True,          # 默认 dry-run：只审计，不实际改写参数
+    "min_risk_score": 0.7,
+    "cooldown_seconds": 300,
+    "redirect_tools": ["read_document", "list_directory", "search_files"],
+    "target_param": "file_path",
+}
+
+# 数据溯源令牌（Data Provenance Token，方案 C 第一阶段）
+# 第一阶段只实现外发/写入类工具参数扫描，不做结果注入。
+DATA_PROVENANCE_CONFIG = {
+    "enabled": True,
+    "target_tools": [
+        "send_email",
+        "http_request",
+        "write_file",
+        "upload_data",
+        "upload_file",
+        "exec",
+    ],
+    "expire_hours": 24,
+    "max_injections": 5,
+    "leak_action": "block",
+    "token_prefix": "DPT",
+    "inject_on_sensitive_read": True,
+    "inject_tools": ["read_document", "query_citizen_info"],
+    "inject_mode": "text",
+}
+
+# 诱饵副本（decoy copy）配置：方案 C 结果级令牌预埋
+DECOY_COPY_CONFIG = {
+    "root": DATA_DIR / "decoy_copies",
+    "inject_mode": "text",          # text / json_field / table_row
+    "token_prefix": "DPT",
+    "max_injections_per_session": 5,
+}
 
 # 确保目录存在
 for _dir in [DATA_DIR, AUDIT_DIR, DECOY_DIR]:

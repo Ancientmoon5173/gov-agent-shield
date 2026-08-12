@@ -85,7 +85,141 @@ describe("createGovAgentShieldHooks", () => {
     expect(result).toBeUndefined();
   });
 
-  it("block 时返回 block=true", async () => {
+  it("allow + decoy_route 时改写执行参数（shadow execute）", async () => {
+    const hooks = createGovAgentShieldHooks({
+      httpClient: {
+        sendToolRequest: vi.fn().mockResolvedValue({
+          action: "allow",
+          reason: "高风险会话读取敏感资产，重定向到诱饵副本",
+          risk_score: 0.75,
+          risk_level: "VERY_HIGH",
+          policy_id: "decoy_route:customer_data",
+          decoy_route: {
+            enabled: true,
+            original_target: "customer_records.xlsx",
+            redirect_target: "/engine/decoy/customer/customer_records.xlsx",
+            reason: "高风险会话访问敏感资产: customer_data",
+            policy_id: "decoy_route:customer_data",
+            target_param: "file_path",
+          },
+        }),
+      },
+    });
+    const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
+    expect(result?.params?.file_path).toBe(
+      "/engine/decoy/customer/customer_records.xlsx",
+    );
+  });
+
+  it("warn + decoy_route 时同样改写执行参数", async () => {
+    const hooks = createGovAgentShieldHooks({
+      httpClient: {
+        sendToolRequest: vi.fn().mockResolvedValue({
+          action: "warn",
+          reason: "内部资料访问已记录",
+          risk_score: 0.4,
+          risk_level: "MEDIUM",
+          policy_id: "internal_document_detect",
+          decoy_route: {
+            enabled: true,
+            original_target: "internal_strategy.md",
+            redirect_target: "/engine/decoy/internal/internal_strategy.md",
+            reason: "高风险会话访问敏感资产: internal_document",
+            policy_id: "decoy_route:internal_document",
+          },
+        }),
+      },
+    });
+    const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
+    expect(result?.params?.file_path).toBe(
+      "/engine/decoy/internal/internal_strategy.md",
+    );
+  });
+
+  it("tool_result_persist 注入数据溯源令牌", async () => {
+    const hooks = createGovAgentShieldHooks({
+      httpClient: {
+        sendToolRequest: vi.fn().mockResolvedValue({
+          action: "allow",
+          reason: "",
+          risk_score: 0,
+          risk_level: "LOW",
+          policy_id: "disposition:allow",
+          inject_token: {
+            token: "DPT-test-001",
+            policy_id: "data_provenance:inject:sensitive",
+          },
+        }),
+      },
+    });
+
+    await hooks.beforeToolCall(makeEvent(), makeCtx());
+
+    const result = hooks.toolResultPersist(
+      {
+        toolName: "read_document",
+        toolCallId: "call-001",
+        message: {
+          role: "toolResult",
+          toolCallId: "call-001",
+          toolName: "read_document",
+          content: [{ type: "text", text: "客户名单内容" }],
+          details: {},
+          isError: false,
+          timestamp: 1,
+        },
+        isSynthetic: false,
+      } as never,
+      {} as never,
+    );
+
+    expect(result?.message).toBeDefined();
+    const content = result?.message?.content as Array<{
+      type: string;
+      text?: string;
+    }>;
+    expect(
+      content.some((block) => block.text?.includes("DPT-test-001")),
+    ).toBe(true);
+  });
+
+  it("无 inject_token 时 tool_result_persist 不改写消息", async () => {
+    const hooks = createGovAgentShieldHooks({
+      httpClient: {
+        sendToolRequest: vi.fn().mockResolvedValue({
+          action: "allow",
+          reason: "",
+          risk_score: 0,
+          risk_level: "LOW",
+          policy_id: "disposition:allow",
+        }),
+      },
+    });
+
+    await hooks.beforeToolCall(makeEvent(), makeCtx());
+
+    const result = hooks.toolResultPersist(
+      {
+        toolName: "read_document",
+        toolCallId: "call-001",
+        message: {
+          role: "toolResult",
+          toolCallId: "call-001",
+          toolName: "read_document",
+          content: [{ type: "text", text: "普通内容" }],
+          details: {},
+          isError: false,
+          timestamp: 1,
+        },
+        isSynthetic: false,
+      } as never,
+      {} as never,
+    );
+
+    expect(result).toBeUndefined();
+  });
+
+  it("block 时弹出 deny-only 审批（保持阻断语义）", async () => {
     const hooks = createGovAgentShieldHooks({
       httpClient: {
         sendToolRequest: vi.fn().mockResolvedValue({
@@ -98,11 +232,15 @@ describe("createGovAgentShieldHooks", () => {
       },
     });
     const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
-    expect(result?.block).toBe(true);
-    expect(result?.blockReason).toBe("检测到诱饵敏感资源");
+    expect(result?.block).toBeUndefined();
+    expect(result?.requireApproval).toBeDefined();
+    expect(result?.requireApproval?.title).toBe("GovAgent-Shield 安全审批");
+    expect(result?.requireApproval?.severity).toBe("critical");
+    expect(result?.requireApproval?.allowedDecisions).toEqual(["deny"]);
+    expect(result?.requireApproval?.description).toContain("decoy:block");
   });
 
-  it("kill 时按阻断处理", async () => {
+  it("kill 时弹出 deny-only 审批并携带 terminate", async () => {
     const hooks = createGovAgentShieldHooks({
       httpClient: {
         sendToolRequest: vi.fn().mockResolvedValue({
@@ -115,8 +253,10 @@ describe("createGovAgentShieldHooks", () => {
       },
     });
     const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
-    expect(result?.block).toBe(true);
+    expect(result?.block).toBeUndefined();
     expect(result?.terminate).toBe(true);
+    expect(result?.requireApproval?.severity).toBe("critical");
+    expect(result?.requireApproval?.allowedDecisions).toEqual(["deny"]);
   });
 
   it("review 触发 requireApproval 审批流程", async () => {
@@ -153,15 +293,18 @@ describe("createGovAgentShieldHooks", () => {
     expect(result?.block).toBe(true);
   });
 
-  it("HTTP 异常时默认 fail-close", async () => {
+  it("HTTP 异常时 fail-close（deny-only 审批）", async () => {
     const hooks = createGovAgentShieldHooks({
       httpClient: {
         sendToolRequest: vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED")),
       },
     });
     const result = await hooks.beforeToolCall(makeEvent(), makeCtx());
-    expect(result?.block).toBe(true);
-    expect(result?.blockReason).toContain("默认阻断");
+    expect(result?.block).toBeUndefined();
+    expect(result?.requireApproval).toBeDefined();
+    expect(result?.requireApproval?.severity).toBe("critical");
+    expect(result?.requireApproval?.allowedDecisions).toEqual(["deny"]);
+    expect(result?.requireApproval?.description).toContain("默认阻断");
   });
 
   it("enabled=false 时直接放行", async () => {

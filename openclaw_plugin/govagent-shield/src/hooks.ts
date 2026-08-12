@@ -4,9 +4,9 @@
  * 本文件只承担 Decision Executor 职责：
  * - allow  → undefined（放行）
  * - warn   → undefined（放行，记录审计日志）
- * - review → requireApproval(decision)（触发人工审批）
- * - block  → { block: true, blockReason }
- * - kill   → { block: true, terminate: true, blockReason }
+ * - review → requireApproval(decision)（触发人工审批，可放行/拒绝）
+ * - block  → deny-only 审批弹窗（仅可拒绝，保持阻断语义）
+ * - kill   → deny-only 审批弹窗 + terminate（终止任务）
  * - unknown → fail-close block
  *
  * 组合模式说明：
@@ -20,9 +20,13 @@ import type {
   PluginHookBeforeToolCallEvent,
   PluginHookBeforeToolCallResult,
   PluginHookToolContext,
+  PluginHookToolResultPersistContext,
+  PluginHookToolResultPersistEvent,
+  PluginHookToolResultPersistResult,
 } from "openclaw/plugin-sdk/types";
 import { ShieldHttpClient, type ShieldHttpClientOptions } from "./http_client.js";
 import { buildToolRequest } from "./tool_request.js";
+import type { DataProvenanceInjectToken } from "./decision.js";
 import type { ShieldDecision, ToolRequest } from "./types.js";
 
 export interface GovAgentShieldHooksOptions extends ShieldHttpClientOptions {
@@ -44,6 +48,10 @@ export interface GovAgentShieldHooks {
     event: PluginHookBeforeToolCallEvent,
     ctx: PluginHookToolContext,
   ): Promise<PluginHookBeforeToolCallResult | undefined>;
+  toolResultPersist(
+    event: PluginHookToolResultPersistEvent,
+    ctx: PluginHookToolResultPersistContext,
+  ): PluginHookToolResultPersistResult | undefined;
   afterToolCall(
     event: PluginHookAfterToolCallEvent,
     ctx: PluginHookToolContext,
@@ -65,6 +73,7 @@ export function createGovAgentShieldHooks(
       log,
       warn,
     });
+  const pendingInjections = new Map<string, DataProvenanceInjectToken>();
 
   return {
     async beforeToolCall(event, ctx) {
@@ -91,7 +100,50 @@ export function createGovAgentShieldHooks(
       }
 
       log(formatShieldLog(request, decision));
+      if (decision.inject_token) {
+        const toolCallId = ctx.toolCallId ?? event.toolCallId ?? "";
+        if (toolCallId) {
+          pendingInjections.set(toolCallId, decision.inject_token);
+        }
+      }
       return executeDecision(decision, { log, warn });
+    },
+
+    toolResultPersist(event, _ctx) {
+      const toolCallId = event.toolCallId ?? "";
+      const injection = pendingInjections.get(toolCallId);
+      if (!injection) {
+        return undefined;
+      }
+      pendingInjections.delete(toolCallId);
+
+      const message = event.message as {
+        role?: string;
+        content?: unknown;
+      };
+      if (message.role !== "toolResult") {
+        return undefined;
+      }
+
+      const tokenLine = `\n[数据校验标记 ${injection.policy_id}: ${injection.token}]`;
+      const content = Array.isArray(message.content)
+        ? [...message.content]
+        : [];
+      if (typeof message.content === "string") {
+        content.push({ type: "text", text: message.content });
+      }
+      content.push({ type: "text", text: tokenLine });
+
+      log(
+        `[GovAgentShield] data_provenance_injected: ` +
+          `${injection.policy_id} token=${injection.token} toolCallId=${toolCallId}`,
+      );
+      return {
+        message: {
+          ...message,
+          content,
+        },
+      } as PluginHookToolResultPersistResult;
     },
 
     async afterToolCall(event, _ctx) {
@@ -119,30 +171,26 @@ export function executeDecision(
 
   switch (decision.action) {
     case "allow":
-      return undefined;
+      return applyDecoyRoute(decision, log);
 
     case "warn":
       // 放行，但记录审计日志
       log(
         `[GovAgentShield] audit warn: policy=${decision.policy_id} reason=${decision.reason}`,
       );
-      return undefined;
+      return applyDecoyRoute(decision, log);
 
     case "review":
       return requireApproval(decision);
 
     case "block":
-      return {
-        block: true,
-        blockReason: decision.reason || "安全策略拦截",
-      };
+      return requireApproval(decision, { denyOnly: true });
 
     case "kill":
-      return {
-        block: true,
+      return requireApproval(decision, {
+        denyOnly: true,
         terminate: true,
-        blockReason: decision.reason || "安全策略终止任务",
-      };
+      });
 
     default:
       warn(
@@ -156,21 +204,57 @@ export function executeDecision(
 }
 
 /**
- * review 决策的审批接口。
+ * 将 Shadow Decoy 路由决策转换为 OpenClaw params 改写。
  *
- * 当前映射到 OpenClaw 原生 requireApproval；
- * 后续可替换为独立的 ApprovalManager。
+ * 语义：安全策略驱动的执行目标重定向（shadow execute），
+ * 不是普通参数修改。仅当 decoy_route.enabled 为 true 时生效。
+ */
+function applyDecoyRoute(
+  decision: ShieldDecision,
+  log: (message: string) => void,
+): ShieldHookResult | undefined {
+  const route = decision.decoy_route;
+  if (!route?.enabled || !route.redirect_target) {
+    return undefined;
+  }
+
+  log(
+    `[GovAgentShield] decoy_route: ${route.original_target || "?"} -> ` +
+      `${route.redirect_target} (policy=${route.policy_id})`,
+  );
+
+  const targetParam = route.target_param ?? "file_path";
+  return {
+    params: {
+      [targetParam]: route.redirect_target,
+    },
+  };
+}
+
+/**
+ * 安全决策的审批弹窗接口。
+ *
+ * review 与 block/kill 共用同一弹窗格式（标题、描述、超时），
+ * 仅在 severity 与 allowedDecisions 上区分：
+ * - review：warning，可 allow-once / allow-always / deny
+ * - block/kill：critical，仅 deny（强制阻断，不可放行）
  */
 export function requireApproval(
   decision: ShieldDecision,
+  options: { denyOnly?: boolean; terminate?: boolean } = {},
 ): ShieldHookResult {
+  const denyOnly = options.denyOnly ?? false;
   return {
+    ...(options.terminate ? { terminate: true } : {}),
     requireApproval: {
       title: "GovAgent-Shield 安全审批",
-      description: decision.reason || "该操作需要人工确认",
-      severity: "warning",
+      description: `${decision.reason || "该操作需要人工确认"}（policy: ${decision.policy_id}）`,
+      severity: denyOnly ? "critical" : "warning",
       timeoutMs: 60_000,
-      allowedDecisions: ["allow-once", "allow-always", "deny"],
+      timeoutReason: "审批超时，按安全阻断处理",
+      allowedDecisions: denyOnly
+        ? ["deny"]
+        : ["allow-once", "allow-always", "deny"],
     },
   };
 }

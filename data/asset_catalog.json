@@ -1,0 +1,49 @@
+{
+  "assets": [
+    {
+      "id": "asset-fin-001",
+      "patterns": ["财务预算", "预算测算", "预算审批", "finance_plan"],
+      "extensions": [".xlsx", ".xls", ".docx", ".pdf"],
+      "asset_type": "financial_document",
+      "sensitivity": "HIGH",
+      "owner": "finance_department",
+      "policy": "require_review"
+    },
+    {
+      "id": "asset-staff-001",
+      "patterns": ["员工工资", "人事信息", "员工台账", "salary"],
+      "extensions": [".xlsx", ".xls", ".docx", ".pdf"],
+      "asset_type": "personnel_record",
+      "sensitivity": "CRITICAL",
+      "owner": "hr_department",
+      "policy": "require_approval"
+    },
+    {
+      "id": "asset-customer-001",
+      "patterns": ["客户名单", "客户资料", "客户台账", "customer"],
+      "extensions": [".xlsx", ".xls", ".docx", ".csv"],
+      "asset_type": "customer_data",
+      "sensitivity": "SENSITIVE",
+      "owner": "business_department",
+      "policy": "require_review"
+    },
+    {
+      "id": "asset-contract-001",
+      "patterns": ["合同", "协议", "contract"],
+      "extensions": [".docx", ".pdf"],
+      "asset_type": "contract",
+      "sensitivity": "HIGH",
+      "owner": "legal_department",
+      "policy": "require_review"
+    },
+    {
+      "id": "asset-internal-001",
+      "patterns": ["内部", "internal", "经营分析"],
+      "extensions": [".md", ".docx", ".xlsx"],
+      "asset_type": "internal_document",
+      "sensitivity": "MEDIUM",
+      "owner": "general_department",
+      "policy": "require_review"
+    }
+  ]
+}

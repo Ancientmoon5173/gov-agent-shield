@@ -14,7 +14,12 @@
  */
 
 import type { ToolRequest } from "./types.js";
-import type { ShieldAction, ShieldDecision } from "./decision.js";
+import type {
+  DataProvenanceInjectToken,
+  DecoyRoute,
+  ShieldAction,
+  ShieldDecision,
+} from "./decision.js";
 
 export interface ShieldHttpClientOptions {
   endpoint?: string;
@@ -104,6 +109,8 @@ export class ShieldHttpClient {
 export function parseDecision(data: Record<string, unknown>): ShieldDecision {
   const rawAction = data.action;
   const action = normalizeAction(rawAction);
+  const decoyRoute = parseDecoyRoute(data.decoy_route);
+  const injectToken = parseInjectToken(data.inject_token);
 
   if (action === "block" && !isKnownAction(rawAction)) {
     return {
@@ -124,6 +131,73 @@ export function parseDecision(data: Record<string, unknown>): ShieldDecision {
     risk_level: String(data.risk_level ?? "LOW"),
     defense_stage: data.defense_stage as string | undefined,
     decision_reason: data.decision_reason as string | undefined,
+    ...(decoyRoute ? { decoy_route: decoyRoute } : {}),
+    ...(injectToken ? { inject_token: injectToken } : {}),
+  };
+}
+
+/**
+ * 解析并校验 decoy_route 对象。
+ *
+ * 仅做协议层结构校验，不解释任何策略语义；
+ * 结构不合法时丢弃该字段，由 Hook 按普通决策执行。
+ */
+function parseDecoyRoute(raw: unknown): DecoyRoute | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const record = raw as Record<string, unknown>;
+  if (
+    typeof record.enabled !== "boolean" ||
+    typeof record.redirect_target !== "string" ||
+    !record.redirect_target
+  ) {
+    return undefined;
+  }
+
+  return {
+    enabled: record.enabled,
+    original_target: String(record.original_target ?? ""),
+    redirect_target: record.redirect_target,
+    reason: String(record.reason ?? ""),
+    policy_id: String(record.policy_id ?? ""),
+    target_param:
+      typeof record.target_param === "string" ? record.target_param : undefined,
+  };
+}
+
+/**
+ * 解析并校验 inject_token 注入指令。
+ *
+ * 仅做协议层结构校验，不解释任何策略语义；
+ * 结构不合法时丢弃该字段，由 Hook 按普通决策执行。
+ */
+function parseInjectToken(raw: unknown): DataProvenanceInjectToken | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const record = raw as Record<string, unknown>;
+  if (
+    typeof record.token !== "string" ||
+    !record.token ||
+    typeof record.policy_id !== "string"
+  ) {
+    return undefined;
+  }
+
+  return {
+    token: record.token,
+    policy_id: record.policy_id,
+    inject_mode:
+      typeof record.inject_mode === "string"
+        ? record.inject_mode
+        : undefined,
+    target_param:
+      typeof record.target_param === "string"
+        ? record.target_param
+        : undefined,
   };
 }
 

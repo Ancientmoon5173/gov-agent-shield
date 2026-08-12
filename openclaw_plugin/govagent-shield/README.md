@@ -90,6 +90,9 @@ Decision Contract { action, risk_score, reason, policy_id }
 组合模式：OpenClaw 会顺序执行所有插件的 `before_tool_call` 并合并结果；
 任一插件返回 `block=true` 即短路。本插件不需要手动调用其他 hook。
 
+另外注册 `tool_result_persist`：当 Python 决策携带 `inject_token` 时，
+插件在工具结果消息写入会话前追加数据溯源令牌，供外发边界扫描。
+
 ---
 
 ## 5. Decision Contract
@@ -100,14 +103,14 @@ Python 引擎返回统一动作，插件按以下规则执行：
 |---|---|
 | `allow` | 放行，继续执行工具 |
 | `warn` | 放行，同时记录审计日志 |
-| `review` | 触发 OpenClaw 原生 `requireApproval` 审批 |
-| `block` | 阻断，返回 `{ block: true, blockReason }` |
-| `kill` | 阻断并标记终止任务，返回 `{ block: true, terminate: true }` |
+| `review` | 触发 OpenClaw 原生 `requireApproval` 审批（可放行/拒绝） |
+| `block` | 触发 deny-only 审批弹窗（critical，仅可拒绝，拒绝后阻断） |
+| `kill` | 触发 deny-only 审批弹窗并标记终止任务 |
 
 fail-close 策略：
 
 - 未知 action → `block`（`invalid_decision_contract`）
-- 网络异常/超时 → `block`（`transport_failure`）
+- 网络异常/超时 → `block`（`transport_failure`，deny-only 审批）
 - `failClosed=false` 时服务不可用降级放行（仅用于联调）
 
 ---

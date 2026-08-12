@@ -33,6 +33,9 @@ export default definePluginEntry({
     });
 
     api.on("before_tool_call", (event, ctx) => hooks.beforeToolCall(event, ctx));
+    api.on("tool_result_persist", (event, ctx) =>
+      hooks.toolResultPersist(event, ctx),
+    );
     api.on("after_tool_call", (event, ctx) => hooks.afterToolCall(event, ctx));
   },
 });

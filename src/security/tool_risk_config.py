@@ -38,6 +38,12 @@ TOOL_RISK_CONFIG = {
         "description": "外部数据上传（高危，演示用）",
         "sensitive_params": ["data", "target"],
     },
+    "exec": {
+        "base_risk": 0.3,
+        "risk_level": "MEDIUM",
+        "description": "执行 shell 命令（读取类低风险；删除/外发由参数规则加分）",
+        "sensitive_params": ["command"],
+    },
 }
 
 # 参数敏感关键词（用于 ParameterRisk 计算）
@@ -60,6 +66,36 @@ PARAMETER_RISK_RULES = {
     "upload_data": {
         "external_target_patterns": ["http://", "https://", "ftp://", "smtp://", "smtps://"],
         "target_penalty": 0.2,
+    },
+    "exec": {
+        "destructive_patterns": [
+            "Remove-Item",
+            "rm -",
+            "rmdir",
+            "rd ",
+            "del /",
+            "Reset-Content",
+            "Clear-Content",
+        ],
+        "destructive_penalty": 0.5,
+        "external_patterns": [
+            "curl",
+            "wget",
+            "Invoke-WebRequest",
+            "Invoke-RestMethod",
+            "requests.post",
+            "requests.get",
+            "urllib.request",
+            "http://",
+            "https://",
+            "ftp://",
+            "smtp",
+            "scp ",
+            "rsync",
+        ],
+        "external_penalty": 0.3,
+        "read_patterns": ["type ", "cat ", "Get-Content", "read_text", "read()", "open("],
+        "read_penalty": 0.0,
     },
 }
 

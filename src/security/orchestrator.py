@@ -34,6 +34,13 @@ from .security_logger import SecurityLogger, create_security_logger
 from .permission_checker import PermissionChecker, create_permission_checker
 from .decoy_manager import DecoyManager, create_decoy_manager
 from .data_classifier import DataClassifier, create_data_classifier
+from .asset_resolver import AssetResolver, create_asset_resolver
+from .behavior_observer import BehaviorObserver, create_behavior_observer
+from .data_provenance import (
+    DataProvenanceTracker,
+    create_data_provenance_tracker,
+)
+from .decoy_copy_generator import create_decoy_copy_generator
 from src.input_guard.sensitive_data_leak_detector import SensitiveDataLeakDetector
 from src.input_guard.input_risk_context import (
     InputRiskContext,
@@ -120,6 +127,9 @@ class SecurityOrchestrator:
         decoy_manager: DecoyManager = None,
         security_logger: SecurityLogger = None,
         data_classifier: DataClassifier = None,
+        asset_resolver: AssetResolver = None,
+        behavior_observer: BehaviorObserver = None,
+        data_provenance_tracker: DataProvenanceTracker = None,
     ):
         self.input_detector = input_detector or get_default_detector()
         self.tool_gateway = tool_gateway or get_default_gateway()
@@ -130,7 +140,17 @@ class SecurityOrchestrator:
         self.decoy_manager = decoy_manager or create_decoy_manager()
         self.security_logger = security_logger or create_security_logger()
         self.data_classifier = data_classifier or create_data_classifier()
+        self.asset_resolver = asset_resolver or create_asset_resolver()
+        self.behavior_observer = behavior_observer or create_behavior_observer()
+        self.data_provenance_tracker = (
+            data_provenance_tracker or create_data_provenance_tracker()
+        )
+        # 诱饵副本预埋的令牌必须进入同一注册表，才能被外发扫描命中
+        self.decoy_manager.copy_generator = create_decoy_copy_generator(
+            tracker=self.data_provenance_tracker
+        )
         self.sensitive_data_leak_detector = SensitiveDataLeakDetector()
+        self._asset_hit_count: Dict[str, int] = {}
         self.input_risk_store = create_input_risk_context_store()
 
         self.disposition_engine = DispositionEngine()
@@ -256,9 +276,54 @@ class SecurityOrchestrator:
         }
         r_tool = max(r_tool, data_result["risk_score"])
 
+        # 1.2 资产身份识别（AssetResolver）
+        asset_context = self.asset_resolver.resolve(tool_name, params)
+        if asset_context.get("matched"):
+            self.security_logger.log_check(
+                session_id=session_id, check_type="asset_resolved",
+                tool_name=tool_name, tool_params=params,
+                risk_score=0.0, risk_level="LOW",
+                disposition="detected",
+                details=asset_context,
+                event_type="asset_resolved",
+                defense_stage="asset_resolver",
+            )
+            self._asset_hit_count[session_id] = (
+                self._asset_hit_count.get(session_id, 0) + 1
+            )
+
         # 2. 行为链风险
         self.behavior_analyzer.record_call(session_id, tool_name, params)
         behavior_result = self.behavior_analyzer.analyze(session_id)
+
+        # 2.1 行为特征观察（方案 B，低权重，不阻断）
+        observer_result = self.behavior_observer.observe(
+            tool_name=tool_name,
+            params=params,
+            asset_context=asset_context,
+            prior_hits=max(self._asset_hit_count.get(session_id, 0) - 1, 0),
+        )
+        if observer_result.get("virtual_hit"):
+            behavior_result["behavior_score"] = min(
+                behavior_result["behavior_score"]
+                + float(observer_result.get("risk_increment", 0.0)),
+                1.0,
+            )
+            self.security_logger.log_check(
+                session_id=session_id, check_type="decoy_virtual_hit",
+                tool_name=tool_name, tool_params=params,
+                risk_score=float(observer_result.get("risk_increment", 0.0)),
+                risk_level="LOW",
+                disposition="observed",
+                details={
+                    "rule_id": observer_result.get("rule_id", ""),
+                    "confidence": observer_result.get("confidence", 0.0),
+                    "risk_increment": observer_result.get("risk_increment", 0.0),
+                    "asset": asset_context,
+                },
+                event_type="decoy_virtual_hit",
+                defense_stage="behavior_observer",
+            )
 
         # 3. 动态诱捕检测（新增）
         decoy_result = self.decoy_manager.check_access(tool_name, params)
@@ -277,6 +342,51 @@ class SecurityOrchestrator:
             "has_upload_context": has_upload,
             "is_authorized": False,
         }
+
+        # 3.1 Shadow Decoy 路由建议（方案 A）：读取/搜索类 + 敏感资产 + 高风险会话
+        route_context = self.decoy_manager.build_route(
+            session_id=session_id,
+            tool_name=tool_name,
+            params=params,
+            asset_context=asset_context,
+            risk_score=max(
+                r_tool,
+                behavior_result["behavior_score"],
+                r_decoy,
+            ),
+        )
+
+        # 3.2 数据溯源令牌泄漏扫描（方案 C 第一阶段：外发/写入参数扫描）
+        dpt_result = self.data_provenance_tracker.scan_leak(tool_name, params)
+        if dpt_result.get("hit"):
+            self.security_logger.log_check(
+                session_id=session_id, check_type="data_provenance_leak",
+                tool_name=tool_name, tool_params=params,
+                risk_score=1.0, risk_level="CRITICAL", disposition="block",
+                details={
+                    "token": dpt_result.get("token", ""),
+                    "token_info": dpt_result.get("token_info", {}),
+                    "asset": asset_context,
+                },
+                event_type="data_provenance_leak_detected",
+                policy_id="data_provenance:leak",
+                decision_reason="检测到数据溯源令牌外泄，阻断外发",
+                defense_stage="data_provenance",
+                chain_summary=self._build_chain_summary(session_id),
+            )
+            return {
+                "blocked": True,
+                "risk_score": 1.0,
+                "risk_level": "CRITICAL",
+                "action": "block",
+                "action_name": "阻断",
+                "reason": "检测到数据溯源令牌外泄，已阻断外发",
+                "policy_id": "data_provenance:leak",
+                "defense_stage": "data_provenance",
+                "decision_reason": "检测到数据溯源令牌外泄，阻断外发",
+                "data_provenance": dpt_result,
+                "asset": asset_context,
+            }
 
         # 4. 记录诱饵事件到 BehaviorAnalyzer
         if decoy_result.get("triggered"):
@@ -394,6 +504,73 @@ class SecurityOrchestrator:
                 chain_summary=self._build_chain_summary(session_id),
             )
 
+        # 5.1 权限通过后：decoy_route 命中 → 审计（dry-run 同样记录，便于调参）
+        if route_context.get("deployment_missing"):
+            self.security_logger.log_check(
+                session_id=session_id, check_type="decoy_deployment_missing",
+                tool_name=tool_name, tool_params=params,
+                risk_score=max(
+                    r_tool, behavior_result["behavior_score"], r_decoy
+                ),
+                risk_level="VERY_HIGH",
+                disposition="reroute_failed",
+                details={
+                    "reason": route_context.get("deployment_reason", ""),
+                    "asset": asset_context,
+                },
+                event_type="decoy.deployment_missing",
+                policy_id="decoy:deployment_missing",
+                decision_reason=route_context.get("deployment_reason", ""),
+                defense_stage="decoy_copy_generator",
+                chain_summary=self._build_chain_summary(session_id),
+            )
+        elif route_context.get("matched"):
+            self.security_logger.log_check(
+                session_id=session_id, check_type="decoy_route_triggered",
+                tool_name=tool_name, tool_params=params,
+                risk_score=max(
+                    r_tool, behavior_result["behavior_score"], r_decoy
+                ),
+                risk_level="VERY_HIGH",
+                disposition="rerouted",
+                details={
+                    "original_target": route_context.get("original_target", ""),
+                    "redirect_target": route_context.get("redirect_target", ""),
+                    "reason": route_context.get("reason", ""),
+                    "policy_id": route_context.get("policy_id", ""),
+                    "dry_run": route_context.get("dry_run", True),
+                    "enabled": route_context.get("enabled", False),
+                    "asset": asset_context,
+                },
+                event_type="decoy_route_triggered",
+                policy_id=route_context.get("policy_id", ""),
+                decision_reason=route_context.get("reason", ""),
+                defense_stage="decoy_manager",
+                chain_summary=self._build_chain_summary(session_id),
+            )
+            if route_context.get("token"):
+                self.security_logger.log_check(
+                    session_id=session_id,
+                    check_type="data_provenance_injected",
+                    tool_name=tool_name, tool_params=params,
+                    risk_score=max(
+                        r_tool, behavior_result["behavior_score"], r_decoy
+                    ),
+                    risk_level="MEDIUM",
+                    disposition="injected",
+                    details={
+                        "token": route_context.get("token", ""),
+                        "copy_path": route_context.get("redirect_target", ""),
+                        "policy_id": route_context.get("policy_id", ""),
+                        "asset": asset_context,
+                    },
+                    event_type="data_provenance_injected",
+                    policy_id=route_context.get("policy_id", ""),
+                    decision_reason="诱饵副本预埋数据溯源令牌",
+                    defense_stage="decoy_copy_generator",
+                    chain_summary=self._build_chain_summary(session_id),
+                )
+
         # 6. 综合评分（权限通过后）
         input_context = self.input_risk_store.get(session_id)
         r_input = input_context.boost() if input_context.risk_score > 0 else 0.0
@@ -408,6 +585,39 @@ class SecurityOrchestrator:
         # 7. 处置决策（传入 decoy_context 给 DecoyTriggered 策略）
         disposition = self.disposition_engine.decide(risk, decoy_context)
         blocked = disposition["action"] in BLOCKING_ACTIONS
+
+        # 7.1 普通敏感读取：返回结果级令牌注入指令（方案 C-2b）
+        inject_token = None
+        route_enabled = route_context.get("matched") and route_context.get(
+            "enabled"
+        )
+        if (
+            self.data_provenance_tracker.should_inject(tool_name)
+            and data_context["data_class"] in ("SENSITIVE", "CRITICAL")
+            and not decoy_result.get("triggered")
+            and not route_enabled
+            and not blocked
+        ):
+            token = self.data_provenance_tracker.generate_token()
+            self.data_provenance_tracker.register(
+                session_id,
+                "",
+                token,
+                metadata={
+                    "source": "tool_result_inject",
+                    "tool_name": tool_name,
+                    "data_class": data_context["data_class"],
+                },
+            )
+            inject_token = {
+                "token": token,
+                "policy_id": (
+                    f"data_provenance:inject:"
+                    f"{data_context['data_class'].lower()}"
+                ),
+                "inject_mode": self.data_provenance_tracker.inject_mode(),
+                "target_param": "file_path",
+            }
 
         # Determine defense_stage
         if decoy_result.get("triggered"):
@@ -444,6 +654,11 @@ class SecurityOrchestrator:
                 "permission": perm_context,
                 "data": data_context,
                 "input_context": input_context.to_dict(),
+                "asset": asset_context,
+                "behavior_observer": observer_result,
+                "decoy_route": route_context,
+                "data_provenance": dpt_result,
+                "inject_token": inject_token,
             },
             event_type=event_type,
             policy_id=disposition.get("policy_id", ""),
@@ -468,7 +683,11 @@ class SecurityOrchestrator:
             "decoy": decoy_result,
             "data_class": data_context["data_class"],
             "data_findings": data_context["data_findings"],
+            "asset": asset_context,
             "permission_policy": perm_policy,
+            "decoy_route": route_context,
+            "data_provenance": dpt_result,
+            "inject_token": inject_token,
         }
 
     def check_output(self, session_id: str, tool_name: str,

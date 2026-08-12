@@ -64,6 +64,9 @@ redteam_latest.json
 redteam_trace_*.json
 debug_reports/
 
+# 诱饵副本运行时产物（会话级 shadow decoy 副本，不入库）
+data/decoy_copies/
+
 # Streamlit 密钥缓存
 .streamlit/secrets.toml
 .streamlit/

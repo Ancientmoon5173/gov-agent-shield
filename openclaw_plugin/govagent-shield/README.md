@@ -103,9 +103,17 @@ Python 引擎返回统一动作，插件按以下规则执行：
 |---|---|
 | `allow` | 放行，继续执行工具 |
 | `warn` | 放行，同时记录审计日志 |
-| `review` | 触发 OpenClaw 原生 `requireApproval` 审批（可放行/拒绝） |
-| `block` | 触发 deny-only 审批弹窗（critical，仅可拒绝，拒绝后阻断） |
-| `kill` | 触发 deny-only 审批弹窗并标记终止任务 |
+| `review` | 触发 OpenClaw 原生 `requireApproval` 审批（warning，允许一次 / 拒绝） |
+| `block` | 触发确认弹窗（critical，仅确认，确认后保持阻断） |
+| `kill` | 触发确认弹窗（critical，仅确认）并标记终止任务 |
+
+审批弹窗规则：
+
+- severity 与决策直接映射：`review` → `warning`，`block` / `kill` → `critical`
+  （OpenClaw 原生 severity 仅接受 `info` / `warning` / `critical`）
+- 弹窗描述包含具体操作（读取文件/执行命令等）、中文决策原因与策略 ID
+- 插件不再设置 `timeoutMs` / `timeoutReason`，网关按原生默认时限处理
+- `review` 提供允许一次 / 拒绝两个按钮；`block` / `kill` 仅保留确认（deny）按钮
 
 fail-close 策略：
 
@@ -141,14 +149,31 @@ node openclaw.mjs plugins list --json
 ```
 [GovAgentShield] 捕获 ToolCall: read_document
 ========== GovAgent Shield ==========
-[Agent] ...
-[ToolCall] tool: read_document
-[Security] risk: 0.2
-decision: ALLOW
+[Agent] openclaw-agent-001              （智能体 ID：openclaw-agent-001）
+[ToolCall] tool: read_document          （工具名称：read_document）
+args: {"file_path":"notes.txt"}         （工具参数：{"file_path":"notes.txt"}）
+[Security] risk: 0.2                    （安全风险评分：0.2）
+policy: disposition:allow               （策略 ID：disposition:allow）
+stage: risk_engine                      （防御阶段：risk_engine）
+decision: ALLOW                         （决策动作：放行）
+reason: 安全检测通过                    （决策原因：安全检测通过）
 =====================================
 ```
 
-阻断时 `decision` 为 `BLOCK` / `KILL`，并带有 `reason`。
+阻断时 `decision` 为 `BLOCK` / `KILL`，并带有中文 `reason` 与翻译。
+
+### 本地输出预览（不启动 OpenClaw / Python）
+
+调整日志或弹窗格式时，无需手动触发网关，直接运行：
+
+```powershell
+powershell scripts\preview_plugin_output.ps1
+```
+
+脚本会先同步插件到 `D:\OpenClaw\openclaw-main\extensions\govagent-shield`，
+再通过 stub 决策驱动真实 `beforeToolCall` hook，打印
+allow / warn / review / block / kill 五种决策的日志块与审批弹窗 JSON。
+预览输出同时写入 `scripts\preview_output.txt`。
 
 ### 验证 ToolCall 被拦截
 

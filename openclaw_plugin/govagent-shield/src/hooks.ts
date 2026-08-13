@@ -5,8 +5,8 @@
  * - allow  → undefined（放行）
  * - warn   → undefined（放行，记录审计日志）
  * - review → requireApproval(decision)（触发人工审批，可放行/拒绝）
- * - block  → deny-only 审批弹窗（仅可拒绝，保持阻断语义）
- * - kill   → deny-only 审批弹窗 + terminate（终止任务）
+ * - block  → deny-only 审批弹窗（仅确认，保持阻断语义）
+ * - kill   → deny-only 审批弹窗 + terminate（仅确认，终止任务）
  * - unknown → fail-close block
  *
  * 组合模式说明：
@@ -27,7 +27,7 @@ import type {
 import { ShieldHttpClient, type ShieldHttpClientOptions } from "./http_client.js";
 import { buildToolRequest } from "./tool_request.js";
 import type { DataProvenanceInjectToken } from "./decision.js";
-import type { ShieldDecision, ToolRequest } from "./types.js";
+import type { ShieldAction, ShieldDecision, ToolRequest } from "./types.js";
 
 export interface GovAgentShieldHooksOptions extends ShieldHttpClientOptions {
   enabled?: boolean;
@@ -106,7 +106,7 @@ export function createGovAgentShieldHooks(
           pendingInjections.set(toolCallId, decision.inject_token);
         }
       }
-      return executeDecision(decision, { log, warn });
+      return executeDecision(decision, { log, warn, request });
     },
 
     toolResultPersist(event, _ctx) {
@@ -164,6 +164,7 @@ export function executeDecision(
   context: {
     log?: (message: string) => void;
     warn?: (message: string) => void;
+    request?: ToolRequest;
   } = {},
 ): ShieldHookResult | undefined {
   const log = context.log ?? ((message: string) => console.log(message));
@@ -181,15 +182,19 @@ export function executeDecision(
       return applyDecoyRoute(decision, log);
 
     case "review":
-      return requireApproval(decision);
+      return requireApproval(decision, { request: context.request });
 
     case "block":
-      return requireApproval(decision, { denyOnly: true });
+      return requireApproval(decision, {
+        denyOnly: true,
+        request: context.request,
+      });
 
     case "kill":
       return requireApproval(decision, {
         denyOnly: true,
         terminate: true,
+        request: context.request,
       });
 
     default:
@@ -234,42 +239,195 @@ function applyDecoyRoute(
 /**
  * 安全决策的审批弹窗接口。
  *
- * review 与 block/kill 共用同一弹窗格式（标题、描述、超时），
+ * review 与 block/kill 共用同一弹窗格式（标题、描述、severity、按钮），
  * 仅在 severity 与 allowedDecisions 上区分：
- * - review：warning，可 allow-once / allow-always / deny
- * - block/kill：critical，仅 deny（强制阻断，不可放行）
+ * - review：warning，允许一次 / 拒绝
+ * - block：critical，仅确认（deny-only，强制阻断，不可放行）
+ * - kill：critical，仅确认（deny-only）+ terminate
+ *
+ * OpenClaw 原生 severity 仅支持 info / warning / critical，
+ * 因此按 review→warning、block/kill→critical 直接映射；
+ * 若直接写入 review/block/kill 会被网关 schema 校验拒绝。
+ * 插件不再声明 timeoutMs / timeoutReason，由网关使用原生默认时限。
  */
 export function requireApproval(
   decision: ShieldDecision,
-  options: { denyOnly?: boolean; terminate?: boolean } = {},
+  options: {
+    denyOnly?: boolean;
+    terminate?: boolean;
+    request?: ToolRequest;
+  } = {},
 ): ShieldHookResult {
   const denyOnly = options.denyOnly ?? false;
+  const prefix = APPROVAL_DESCRIPTION_PREFIX[decision.action] ?? "该操作需要人工审批";
+  const reason = decision.reason || decision.decision_reason || "未提供原因";
+  const operation = options.request
+    ? formatRequestedOperation(options.request)
+    : "";
   return {
     ...(options.terminate ? { terminate: true } : {}),
     requireApproval: {
       title: "GovAgent-Shield 安全审批",
-      description: `${decision.reason || "该操作需要人工确认"}（policy: ${decision.policy_id}）`,
+      description: buildApprovalDescription(
+        prefix,
+        operation,
+        reason,
+        decision.policy_id,
+      ),
       severity: denyOnly ? "critical" : "warning",
-      timeoutMs: 60_000,
-      timeoutReason: "审批超时，按安全阻断处理",
       allowedDecisions: denyOnly
         ? ["deny"]
-        : ["allow-once", "allow-always", "deny"],
+        : ["allow-once", "deny"],
     },
   };
 }
 
+const APPROVAL_TOOL_LABELS: Record<string, string> = {
+  read: "读取文件",
+  read_document: "读取文件",
+  list_directory: "列出目录",
+  search_files: "搜索文件",
+  exec: "执行命令",
+  bash: "执行命令",
+  write: "写入文件",
+  write_file: "写入文件",
+  edit: "编辑文件",
+  apply_patch: "修改文件",
+  upload_data: "上传数据",
+  upload_file: "上传文件",
+  send_email: "发送邮件",
+  http_request: "发起网络请求",
+  web_fetch: "获取网页内容",
+  query_citizen_info: "查询居民信息",
+};
+
+const APPROVAL_PARAM_KEYS: Array<{ keys: string[] }> = [
+  { keys: ["command", "cmdline", "script", "shell_command"] },
+  { keys: ["file_path", "path", "file", "filename", "source_path", "target_path"] },
+  { keys: ["target", "url", "uri"] },
+  { keys: ["name", "id_number", "query"] },
+  { keys: ["data", "content", "text"] },
+];
+
+function firstStringParam(
+  params: Record<string, unknown>,
+  keys: string[],
+): string {
+  for (const key of keys) {
+    const value = params[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+function formatRequestedOperation(request: ToolRequest): string {
+  const toolName = request.tool_name;
+  const label = APPROVAL_TOOL_LABELS[toolName] ?? toolName;
+  const params = request.parameters ?? {};
+  for (const group of APPROVAL_PARAM_KEYS) {
+    const detail = firstStringParam(params, group.keys);
+    if (detail) {
+      return `${label}：${truncateApprovalText(detail, 200)}`;
+    }
+  }
+  const raw = JSON.stringify(params);
+  if (raw && raw.length > 2) {
+    return `${label}：${truncateApprovalText(raw, 200)}`;
+  }
+  return label;
+}
+
+function truncateApprovalText(text: string, maxLength: number): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= maxLength) {
+    return flat;
+  }
+  return `${flat.slice(0, maxLength - 1)}…`;
+}
+
+function buildApprovalDescription(
+  prefix: string,
+  operation: string,
+  reason: string,
+  policyId: string,
+): string {
+  const full = `${prefix}：${operation}。原因：${reason}（policy: ${policyId}）`;
+  if (full.length <= 500) {
+    return full;
+  }
+  const shortOperation = truncateApprovalText(operation, 120);
+  const shortReason = truncateApprovalText(reason, 120);
+  return `${prefix}：${shortOperation}。原因：${shortReason}（policy: ${policyId}）`;
+}
+
+const APPROVAL_DESCRIPTION_PREFIX: Record<string, string> = {
+  review: "该操作需要人工审批",
+  block: "安全策略已阻断该操作",
+  kill: "安全策略已终止任务",
+};
+
+/** 日志字段区显示宽度（CJK 按双宽计算），中文翻译统一右对齐到该列。 */
+const LOG_FIELD_DISPLAY_WIDTH = 40;
+
+const ACTION_ZH_LABELS: Record<ShieldAction, string> = {
+  allow: "放行",
+  warn: "告警",
+  review: "人工审批",
+  block: "阻断",
+  kill: "终止任务",
+};
+
+function isWideDisplayChar(ch: string): boolean {
+  const code = ch.codePointAt(0) ?? 0;
+  return (
+    code >= 0x1100 &&
+    (code <= 0x115f ||
+      code === 0x2329 ||
+      code === 0x232a ||
+      (code >= 0x2e80 && code <= 0xa4cf && code !== 0x303f) ||
+      (code >= 0xac00 && code <= 0xd7a3) ||
+      (code >= 0xf900 && code <= 0xfaff) ||
+      (code >= 0xfe10 && code <= 0xfe19) ||
+      (code >= 0xfe30 && code <= 0xfe6f) ||
+      (code >= 0xff00 && code <= 0xff60) ||
+      (code >= 0xffe0 && code <= 0xffe6) ||
+      (code >= 0x1f300 && code <= 0x1faff) ||
+      (code >= 0x20000 && code <= 0x3fffd))
+  );
+}
+
+function displayWidth(text: string): number {
+  let width = 0;
+  for (const ch of text) {
+    width += isWideDisplayChar(ch) ? 2 : 1;
+  }
+  return width;
+}
+
+/** 左侧英文字段靠左，右侧中文翻译按显示宽度右对齐。 */
+function alignedLogLine(left: string, right: string): string {
+  const pad = Math.max(1, LOG_FIELD_DISPLAY_WIDTH - displayWidth(left));
+  return `${left}${" ".repeat(pad)}（${right}）`;
+}
+
 function formatShieldLog(request: ToolRequest, decision: ShieldDecision): string {
+  const action = decision.action;
+  const actionZh = ACTION_ZH_LABELS[action] ?? action;
+  const stage = decision.defense_stage ?? "risk_engine";
+  const reason = decision.reason || decision.decision_reason || "";
+  const argsJson = JSON.stringify(request.parameters);
   const lines = [
     "========== GovAgent Shield ==========",
-    `[Agent] ${request.agent_id}`,
-    `[ToolCall] tool: ${request.tool_name}`,
-    `args: ${JSON.stringify(request.parameters)}`,
-    `[Security] risk: ${decision.risk_score}`,
-    `policy: ${decision.policy_id}`,
-    `stage: ${decision.defense_stage ?? "risk_engine"}`,
-    `decision: ${decision.action.toUpperCase()}`,
-    `reason: ${decision.reason || decision.decision_reason || ""}`,
+    alignedLogLine(`[Agent] ${request.agent_id}`, `智能体 ID：${request.agent_id}`),
+    alignedLogLine(`[ToolCall] tool: ${request.tool_name}`, `工具名称：${request.tool_name}`),
+    alignedLogLine(`args: ${argsJson}`, `工具参数：${argsJson}`),
+    alignedLogLine(`[Security] risk: ${decision.risk_score}`, `安全风险评分：${decision.risk_score}`),
+    alignedLogLine(`policy: ${decision.policy_id}`, `策略 ID：${decision.policy_id}`),
+    alignedLogLine(`stage: ${stage}`, `防御阶段：${stage}`),
+    alignedLogLine(`decision: ${action.toUpperCase()}`, `决策动作：${actionZh}`),
+    alignedLogLine(`reason: ${reason}`, `决策原因：${reason}`),
     "=====================================",
   ];
   return lines.join("\n");

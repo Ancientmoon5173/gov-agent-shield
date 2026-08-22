@@ -18,11 +18,11 @@ from src.security.decoy_manager import DecoyManager
 from src.security.decoy_copy_generator import create_decoy_copy_generator
 
 
-ASSET_CUSTOMER = {
+ASSET_PERSONAL = {
     "matched": True,
-    "asset_type": "customer_data",
-    "sensitivity": "SENSITIVE",
-    "owner": "business_department",
+    "asset_type": "personal_information",
+    "sensitivity": "HIGH",
+    "owner": "数据管理科",
     "policy": "require_review",
 }
 
@@ -31,22 +31,23 @@ def _route(manager, session_id="s1", risk=0.8, params=None, asset=None):
     return manager.build_route(
         session_id=session_id,
         tool_name="read_document",
-        params=params or {"file_path": "customer_records.xlsx"},
-        asset_context=asset or ASSET_CUSTOMER,
+        params=params or {"file_path": "企业联系人信息.xlsx"},
+        asset_context=asset or ASSET_PERSONAL,
         risk_score=risk,
     )
 
 
-def test_dry_run_default_audits_without_enabling():
+def test_dry_run_mode_audits_without_enabling():
     manager = DecoyManager()
+    manager._route_config["dry_run"] = True
     result = _route(manager)
 
     assert result["matched"] is True
     assert result["enabled"] is False
     assert result["dry_run"] is True
-    assert result["policy_id"] == "decoy_route:customer_data"
-    assert result["redirect_target"].startswith("/engine/decoy/customer/")
-    assert result["original_target"] == "customer_records.xlsx"
+    assert result["policy_id"] == "decoy_route:personal_information"
+    assert result["redirect_target"].startswith("/engine/decoy/personal/")
+    assert result["original_target"] == "企业联系人信息.xlsx"
 
 
 def test_enabled_when_dry_run_disabled(tmp_path):
@@ -63,9 +64,11 @@ def test_enabled_when_dry_run_disabled(tmp_path):
     assert result["enabled"] is True
     assert result["token"].startswith("DPT")
     assert result["redirect_target"] == str(
-        tmp_path / "s1" / "customer_data" / "customer_records.xlsx"
+        tmp_path / "s1" / "personal_information" / "企业联系人信息.xlsx"
     )
-    assert (tmp_path / "s1" / "customer_data" / "customer_records.xlsx").exists()
+    assert (
+        tmp_path / "s1" / "personal_information" / "企业联系人信息.xlsx"
+    ).exists()
 
 
 def test_cooldown_skips_repeated_route():
@@ -84,8 +87,12 @@ def test_write_tool_never_redirected():
     result = manager.build_route(
         session_id="s-write",
         tool_name="upload_data",
-        params={"data": "customer_records.xlsx", "target": "http://external"},
-        asset_context=ASSET_CUSTOMER,
+        params={"data": "数据库连接配置.txt", "target": "http://external"},
+        asset_context={
+            "matched": True,
+            "asset_type": "credential",
+            "sensitivity": "CRITICAL",
+        },
         risk_score=0.9,
     )
 
@@ -112,8 +119,8 @@ def test_redirect_target_blocks_path_traversal():
         "engine_decoy_root": "/engine/decoy/",
         "mappings": [
             {
-                "asset_type": "customer_data",
-                "min_sensitivity": "SENSITIVE",
+                "asset_type": "personal_information",
+                "min_sensitivity": "HIGH",
                 "template": "../../escape/{filename}",
             }
         ],
@@ -127,26 +134,27 @@ def test_redirect_target_blocks_path_traversal():
 
 def test_orchestrator_dry_run_audit():
     orc = create_orchestrator()
+    orc.decoy_manager._route_config["dry_run"] = True
     session_id = "route-orchestrator-dry"
 
     result = orc.check_tool_call(
         session_id,
         "read_document",
-        {"file_path": "客户名单_机密.xlsx"},
+        {"file_path": "数据库连接配置.txt"},
         agent_id="admin_agent",
     )
 
     assert result["decoy_route"]["matched"] is True
     assert result["decoy_route"]["enabled"] is False
-    assert result["decoy_route"]["policy_id"] == "decoy_route:customer_data"
+    assert result["decoy_route"]["policy_id"] == "decoy_route:credential"
 
     events = orc.security_logger.get_session_events(session_id)
     route_events = [
         e for e in events if e.get("event_type") == "decoy_route_triggered"
     ]
     assert route_events
-    assert json.loads(route_events[0]["details"])["redirect_target"].startswith(
-        "/engine/decoy/customer/"
+    assert json.loads(route_events[-1]["details"])["redirect_target"].startswith(
+        "/engine/decoy/credential/"
     )
 
 
@@ -159,7 +167,7 @@ def test_orchestrator_enabled_route(tmp_path):
     result = orc.check_tool_call(
         session_id,
         "read_document",
-        {"file_path": "客户名单_机密.xlsx"},
+        {"file_path": "数据库连接配置.txt"},
         agent_id="admin_agent",
     )
 
@@ -170,7 +178,7 @@ def test_orchestrator_enabled_route(tmp_path):
         str(tmp_path)
     )
     copy_file = (
-        tmp_path / session_id / "customer_data" / "客户名单_机密.xlsx"
+        tmp_path / session_id / "credential" / "数据库连接配置.txt"
     )
     assert copy_file.exists()
 

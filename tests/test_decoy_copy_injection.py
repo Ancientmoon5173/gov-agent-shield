@@ -76,6 +76,7 @@ def test_invalid_filename_rejected(tmp_path):
 
 def test_orchestrator_inject_token_on_sensitive_read():
     orc = create_orchestrator()
+    orc.decoy_manager._route_config["dry_run"] = True
     session_id = "sess-inject-token"
 
     result = orc.check_tool_call(

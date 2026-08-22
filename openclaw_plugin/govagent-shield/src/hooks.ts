@@ -172,14 +172,14 @@ export function executeDecision(
 
   switch (decision.action) {
     case "allow":
-      return applyDecoyRoute(decision, log);
+      return applyDecoyRoute(decision, log, context.request);
 
     case "warn":
       // 放行，但记录审计日志
       log(
         `[GovAgentShield] audit warn: policy=${decision.policy_id} reason=${decision.reason}`,
       );
-      return applyDecoyRoute(decision, log);
+      return applyDecoyRoute(decision, log, context.request);
 
     case "review":
       return requireApproval(decision, { request: context.request });
@@ -217,23 +217,80 @@ export function executeDecision(
 function applyDecoyRoute(
   decision: ShieldDecision,
   log: (message: string) => void,
+  request?: ToolRequest,
 ): ShieldHookResult | undefined {
   const route = decision.decoy_route;
   if (!route?.enabled || !route.redirect_target) {
     return undefined;
   }
 
+  const toolName = request?.tool_name ?? "";
+  if (toolName && !DECOY_ROUTE_READ_TOOLS.has(toolName)) {
+    log(
+      `[GovAgentShield] decoy_route_ignored_write_tool: ${toolName}`,
+    );
+    return undefined;
+  }
+
+  const targetParam = route.target_param ?? "file_path";
+  if (!DECOY_ROUTE_PARAM_KEYS.has(targetParam)) {
+    log(
+      `[GovAgentShield] decoy_route_ignored_invalid_param: ${targetParam}`,
+    );
+    return undefined;
+  }
+
+  if (!isAllowedDecoyTarget(route.redirect_target)) {
+    log(
+      `[GovAgentShield] decoy_route_ignored_invalid_target: ` +
+        route.redirect_target,
+    );
+    return undefined;
+  }
+
+  const modifiedParams = {
+    ...(request?.parameters ?? {}),
+    [targetParam]: route.redirect_target,
+  };
+
   log(
     `[GovAgentShield] decoy_route: ${route.original_target || "?"} -> ` +
       `${route.redirect_target} (policy=${route.policy_id})`,
   );
-
-  const targetParam = route.target_param ?? "file_path";
+  log(
+    `[GovAgentShield] decoy_route_audit: tool=${toolName} ` +
+      `original=${JSON.stringify(request?.parameters ?? {})} ` +
+      `modified=${JSON.stringify(modifiedParams)}`,
+  );
   return {
     params: {
       [targetParam]: route.redirect_target,
     },
   };
+}
+
+const DECOY_ROUTE_READ_TOOLS = new Set([
+  "read",
+  "read_document",
+  "list_directory",
+  "search_files",
+]);
+
+const DECOY_ROUTE_PARAM_KEYS = new Set([
+  "file_path",
+  "path",
+  "file",
+  "filename",
+  "source_path",
+  "target_path",
+  "directory",
+]);
+
+function isAllowedDecoyTarget(target: string): boolean {
+  return (
+    target.startsWith("/engine/decoy/") ||
+    target.includes("decoy_copies")
+  );
 }
 
 /**

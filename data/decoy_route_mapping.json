@@ -2,29 +2,19 @@
   "engine_decoy_root": "/engine/decoy/",
   "min_risk_score": 0.7,
   "cooldown_seconds": 300,
-  "dry_run": true,
-  "redirect_tools": ["read_document", "list_directory", "search_files"],
+  "dry_run": false,
+  "redirect_tools": ["read", "read_document", "list_directory", "search_files"],
   "target_param": "file_path",
   "mappings": [
     {
-      "asset_type": "financial_document",
+      "asset_type": "personal_information",
       "min_sensitivity": "HIGH",
-      "template": "financial/{filename}"
+      "template": "personal/{filename}"
     },
     {
-      "asset_type": "personnel_record",
+      "asset_type": "credential",
       "min_sensitivity": "CRITICAL",
-      "template": "personnel/{filename}"
-    },
-    {
-      "asset_type": "customer_data",
-      "min_sensitivity": "SENSITIVE",
-      "template": "customer/{filename}"
-    },
-    {
-      "asset_type": "contract",
-      "min_sensitivity": "HIGH",
-      "template": "contract/{filename}"
+      "template": "credential/{filename}"
     }
   ]
 }

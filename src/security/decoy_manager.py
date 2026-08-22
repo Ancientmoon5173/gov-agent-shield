@@ -22,6 +22,17 @@ from src.security.decoy_copy_generator import (
 from src.security.file_access import extract_file_references
 
 
+_FILE_PARAM_KEYS = (
+    "file_path",
+    "path",
+    "file",
+    "filename",
+    "source_path",
+    "target_path",
+    "directory",
+)
+
+
 class DecoyManager:
     """
     诱饵管理器。
@@ -170,13 +181,15 @@ class DecoyManager:
             "detail": "",
         }
 
-    def _extract_file_param(self, tool_name: str, params: Dict[str, Any]) -> Optional[str]:
-        """从工具参数中提取文件路径。"""
-        if tool_name == "read_document":
-            return params.get("file_path")
-        if tool_name == "upload_data":
-            return params.get("data", "")
-        return None
+    def _extract_file_param(
+        self, tool_name: str, params: Dict[str, Any]
+    ) -> tuple:
+        """从工具参数中提取文件路径及对应参数名。"""
+        for key in _FILE_PARAM_KEYS:
+            value = params.get(key)
+            if isinstance(value, str) and value:
+                return key, value
+        return "", ""
 
     def _extract_file_params(self, params: Dict[str, Any]) -> List[str]:
         """提取所有候选文件引用（通用解析，不依赖工具名）。"""
@@ -235,6 +248,7 @@ class DecoyManager:
             "redirect_target": "",
             "reason": "",
             "policy_id": "",
+            "target_param": "",
         }
 
         if not self._route_config.get("enabled", True):
@@ -246,7 +260,7 @@ class DecoyManager:
         if tool_name not in redirect_tools:
             return empty
 
-        original_target = self._extract_file_param(tool_name, params)
+        target_param, original_target = self._extract_file_param(tool_name, params)
         if not original_target:
             return empty
         original_target = str(original_target)
@@ -294,6 +308,8 @@ class DecoyManager:
             "redirect_target": redirect_target,
             "reason": f"高风险会话访问敏感资产: {asset_type}",
             "policy_id": f"decoy_route:{asset_type}",
+            "target_param": target_param,
+            "original_params": dict(params or {}),
         }
 
         # C-2a：实际启用时生成会话级诱饵副本并预埋数据溯源令牌
@@ -319,6 +335,9 @@ class DecoyManager:
                     "reason", "decoy_copy_failed"
                 )
 
+        result["modified_params"] = {
+            target_param: result["redirect_target"],
+        }
         return result
 
     def _find_mapping(

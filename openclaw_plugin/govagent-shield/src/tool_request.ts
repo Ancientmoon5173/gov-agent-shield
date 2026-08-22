@@ -28,6 +28,9 @@ export function buildToolRequest(
       tool_input_kind: event.toolInputKind ?? ctx.toolInputKind,
       derived_paths: event.derivedPaths,
     },
+    task_context: normalizeTaskContext(
+      (ctx as { taskContext?: unknown }).taskContext,
+    ),
     timestamp: new Date().toISOString(),
   };
 }
@@ -38,6 +41,13 @@ function normalizeParams(params: unknown): Record<string, unknown> {
   }
   if (Array.isArray(params)) {
     return { values: params };
+  }
+  return {};
+}
+
+function normalizeTaskContext(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
   }
   return {};
 }

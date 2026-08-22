@@ -253,6 +253,7 @@ class SecurityOrchestrator:
         params: Dict[str, Any],
         user_input: str = "",
         agent_id: str = "default_agent",
+        task_context: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """
         检查工具调用安全性（核心检测点）。
@@ -278,6 +279,8 @@ class SecurityOrchestrator:
 
         # 1.2 资产身份识别（AssetResolver）
         asset_context = self.asset_resolver.resolve(tool_name, params)
+        asset_risk = float(asset_context.get("risk_score", 0.0) or 0.0)
+        r_tool = max(r_tool, asset_risk)
         if asset_context.get("matched"):
             self.security_logger.log_check(
                 session_id=session_id, check_type="asset_resolved",
@@ -293,7 +296,13 @@ class SecurityOrchestrator:
             )
 
         # 2. 行为链风险
-        self.behavior_analyzer.record_call(session_id, tool_name, params)
+        self.behavior_analyzer.record_call(
+            session_id,
+            tool_name,
+            params,
+            asset_context=asset_context,
+            task_context=task_context,
+        )
         behavior_result = self.behavior_analyzer.analyze(session_id)
 
         # 2.1 行为特征观察（方案 B，低权重，不阻断）
@@ -541,6 +550,12 @@ class SecurityOrchestrator:
                     "dry_run": route_context.get("dry_run", True),
                     "enabled": route_context.get("enabled", False),
                     "asset": asset_context,
+                    "original_params": route_context.get(
+                        "original_params", params
+                    ),
+                    "modified_params": route_context.get(
+                        "modified_params", {}
+                    ),
                 },
                 event_type="decoy_route_triggered",
                 policy_id=route_context.get("policy_id", ""),
@@ -591,9 +606,24 @@ class SecurityOrchestrator:
         route_enabled = route_context.get("matched") and route_context.get(
             "enabled"
         )
+        asset_sensitivity = str(
+            asset_context.get("sensitivity", "LOW")
+        ).upper()
+        target_param = route_context.get("target_param") or "file_path"
+        for key in ("file_path", "path", "file", "filename"):
+            if key in params:
+                target_param = key
+                break
+        inject_label = str(
+            asset_context.get("asset_type")
+            or data_context["data_class"]
+        ).lower()
         if (
             self.data_provenance_tracker.should_inject(tool_name)
-            and data_context["data_class"] in ("SENSITIVE", "CRITICAL")
+            and (
+                data_context["data_class"] in ("SENSITIVE", "CRITICAL")
+                or asset_sensitivity in ("SENSITIVE", "HIGH", "CRITICAL")
+            )
             and not decoy_result.get("triggered")
             and not route_enabled
             and not blocked
@@ -607,16 +637,17 @@ class SecurityOrchestrator:
                     "source": "tool_result_inject",
                     "tool_name": tool_name,
                     "data_class": data_context["data_class"],
+                    "asset_type": asset_context.get("asset_type", ""),
                 },
             )
             inject_token = {
                 "token": token,
                 "policy_id": (
                     f"data_provenance:inject:"
-                    f"{data_context['data_class'].lower()}"
+                    f"{inject_label}"
                 ),
                 "inject_mode": self.data_provenance_tracker.inject_mode(),
-                "target_param": "file_path",
+                "target_param": target_param,
             }
 
         # Determine defense_stage
@@ -659,6 +690,7 @@ class SecurityOrchestrator:
                 "decoy_route": route_context,
                 "data_provenance": dpt_result,
                 "inject_token": inject_token,
+                "task_context": task_context or {},
             },
             event_type=event_type,
             policy_id=disposition.get("policy_id", ""),
@@ -688,6 +720,7 @@ class SecurityOrchestrator:
             "decoy_route": route_context,
             "data_provenance": dpt_result,
             "inject_token": inject_token,
+            "task_context": task_context or {},
         }
 
     def check_output(self, session_id: str, tool_name: str,

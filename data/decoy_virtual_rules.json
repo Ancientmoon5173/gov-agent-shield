@@ -2,7 +2,7 @@
   "rules": [
     {
       "rule_id": "virtual-fin-001",
-      "target_tools": ["read_document", "list_directory", "search_files", "exec"],
+      "target_tools": ["read", "read_document", "list_directory", "search_files", "exec"],
       "patterns": ["预算", "财务", "finance"],
       "min_sensitivity": "HIGH",
       "base_confidence": 0.3,
@@ -10,7 +10,7 @@
     },
     {
       "rule_id": "virtual-staff-001",
-      "target_tools": ["read_document", "list_directory", "search_files", "exec"],
+      "target_tools": ["read", "read_document", "list_directory", "search_files", "exec"],
       "patterns": ["员工", "人事", "工资", "salary"],
       "min_sensitivity": "CRITICAL",
       "base_confidence": 0.35,
@@ -18,10 +18,26 @@
     },
     {
       "rule_id": "virtual-customer-001",
-      "target_tools": ["read_document", "list_directory", "search_files", "exec"],
+      "target_tools": ["read", "read_document", "list_directory", "search_files", "exec"],
       "patterns": ["客户", "customer"],
       "min_sensitivity": "SENSITIVE",
       "base_confidence": 0.3,
+      "risk_increment": 0.05
+    },
+    {
+      "rule_id": "virtual-personal-001",
+      "target_tools": ["read", "read_document", "list_directory", "search_files", "exec"],
+      "patterns": ["企业联系人", "联系人信息", "contact"],
+      "min_sensitivity": "HIGH",
+      "base_confidence": 0.3,
+      "risk_increment": 0.05
+    },
+    {
+      "rule_id": "virtual-credential-001",
+      "target_tools": ["read", "read_document", "list_directory", "search_files", "exec"],
+      "patterns": ["数据库连接", "连接配置", "credential"],
+      "min_sensitivity": "CRITICAL",
+      "base_confidence": 0.4,
       "risk_increment": 0.05
     }
   ]

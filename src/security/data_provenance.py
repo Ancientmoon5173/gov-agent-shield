@@ -61,6 +61,11 @@ class DataProvenanceTracker:
                 and info.get("expires_at", 0) > now
             )
 
+    def revoke(self, token_value: str) -> None:
+        """撤销一个令牌，使其不再参与泄漏扫描。"""
+        with self._lock:
+            self._tokens.pop(token_value, None)
+
     def should_inject(self, tool_name: str) -> bool:
         """是否需要对当前工具结果注入令牌。"""
         return (

@@ -38,6 +38,7 @@ class ToolInterceptor:
             tool_name=request.tool_name,
             params=request.parameters,
             agent_id=request.agent_id,
+            task_context=request.task_context,
         )
 
         action = result.get("action", "allow")

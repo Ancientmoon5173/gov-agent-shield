@@ -22,10 +22,12 @@ DECOY_ROUTE_MAPPING_PATH = DATA_DIR / "decoy_route_mapping.json"
 # Shadow Decoy（decoy_route）配置
 DECOY_ROUTE_CONFIG = {
     "enabled": True,
-    "dry_run": True,          # 默认 dry-run：只审计，不实际改写参数
+    "dry_run": (
+        os.getenv("GOVAGENT_DECOY_DRY_RUN", "false").lower() == "true"
+    ),
     "min_risk_score": 0.7,
     "cooldown_seconds": 300,
-    "redirect_tools": ["read_document", "list_directory", "search_files"],
+    "redirect_tools": ["read", "read_document", "list_directory", "search_files"],
     "target_param": "file_path",
 }
 
@@ -46,7 +48,7 @@ DATA_PROVENANCE_CONFIG = {
     "leak_action": "block",
     "token_prefix": "DPT",
     "inject_on_sensitive_read": True,
-    "inject_tools": ["read_document", "query_citizen_info"],
+    "inject_tools": ["read", "read_document", "query_citizen_info"],
     "inject_mode": "text",
 }
 

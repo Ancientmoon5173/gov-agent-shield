@@ -11,6 +11,7 @@ export interface ToolRequest {
   tool_name: string;
   parameters: Record<string, unknown>;
   context: Record<string, unknown>;
+  task_context?: Record<string, unknown>;
   timestamp: string;
 }
 

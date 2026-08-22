@@ -2,7 +2,7 @@
 资产身份解析器（AssetResolver）。
 
 将工具调用参数解析为资产身份标签：
-asset_type / sensitivity / owner / policy，
+asset_type / sensitivity / owner / sharing_policy / risk_score，
 供行为观察、诱饵路由与风险引擎使用。
 
 资产目录来自 data/asset_catalog.json，避免纯路径关键词散落代码。
@@ -40,10 +40,13 @@ class AssetResolver:
             {
                 "matched": bool,
                 "asset_id": str,
+                "name": str,
                 "asset_type": str,
                 "sensitivity": str,   # LOW / MEDIUM / HIGH / CRITICAL
                 "owner": str,
-                "policy": str,         # allow / require_review / require_approval / block
+                "policy": str,          # allow / require_review / require_approval / block
+                "sharing_policy": str,  # allow / REVIEW_REQUIRED / BLOCK
+                "risk_score": float,    # 0.0 - 1.0，资产身份对风险的直接贡献
             }
         """
         params = params or {}
@@ -59,24 +62,43 @@ class AssetResolver:
             if self._match(asset, text, path):
                 return {
                     "matched": True,
-                    "asset_id": str(asset.get("id", "")),
+                    "asset_id": str(
+                        asset.get("asset_id") or asset.get("id", "")
+                    ),
+                    "name": str(asset.get("name", "")),
                     "asset_type": str(asset.get("asset_type", "")),
                     "sensitivity": str(asset.get("sensitivity", "MEDIUM")),
                     "owner": str(asset.get("owner", "")),
-                    "policy": str(asset.get("policy", "require_review")),
+                    "policy": str(
+                        asset.get("policy", asset.get("sharing_policy", "allow"))
+                    ),
+                    "sharing_policy": str(
+                        asset.get(
+                            "sharing_policy",
+                            asset.get("policy", "allow"),
+                        )
+                    ),
+                    "risk_score": float(asset.get("risk_score", 0.0)),
                 }
 
         return {
             "matched": False,
             "asset_id": "",
+            "name": "",
             "asset_type": "",
             "sensitivity": "LOW",
             "owner": "",
             "policy": "allow",
+            "sharing_policy": "allow",
+            "risk_score": 0.0,
         }
 
     def _match(self, asset: Dict[str, Any], text: str, path: str) -> bool:
-        """按关键词与扩展名匹配资产。"""
+        """按精确文件名、关键词与扩展名匹配资产。"""
+        asset_name = asset.get("name")
+        if asset_name and path and Path(path).name.lower() == str(asset_name).lower():
+            return True
+
         extensions = asset.get("extensions", [])
         if extensions and path:
             lower_path = path.lower()

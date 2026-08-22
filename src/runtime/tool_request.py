@@ -18,6 +18,7 @@ class ToolRequest:
     tool_name: str
     parameters: Dict[str, Any] = field(default_factory=dict)
     context: Dict[str, Any] = field(default_factory=dict)
+    task_context: Dict[str, Any] = field(default_factory=dict)
     timestamp: str = ""
 
     def __post_init__(self):
@@ -31,5 +32,6 @@ class ToolRequest:
             "tool_name": self.tool_name,
             "parameters": self.parameters,
             "context": self.context,
+            "task_context": self.task_context,
             "timestamp": self.timestamp,
         }

@@ -44,6 +44,32 @@
       "sensitivity": "MEDIUM",
       "owner": "general_department",
       "policy": "require_review"
+    },
+    {
+      "id": "asset-contact-001",
+      "asset_id": "asset-contact-001",
+      "name": "企业联系人信息.xlsx",
+      "patterns": ["企业联系人", "联系人信息", "contact"],
+      "extensions": [".xlsx", ".csv"],
+      "asset_type": "personal_information",
+      "sensitivity": "HIGH",
+      "owner": "数据管理科",
+      "policy": "require_review",
+      "sharing_policy": "REVIEW_REQUIRED",
+      "risk_score": 0.6
+    },
+    {
+      "id": "asset-credential-001",
+      "asset_id": "asset-credential-001",
+      "name": "数据库连接配置.txt",
+      "patterns": ["数据库连接", "数据库连接配置", "连接配置"],
+      "extensions": [".txt", ".ini", ".json", ".conf"],
+      "asset_type": "credential",
+      "sensitivity": "CRITICAL",
+      "owner": "信息中心",
+      "policy": "block",
+      "sharing_policy": "BLOCK",
+      "risk_score": 0.9
     }
   ]
 }

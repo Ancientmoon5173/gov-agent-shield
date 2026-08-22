@@ -57,6 +57,7 @@ class SecurityCheckRequest(BaseModel):
     parameters: dict = {}
     context: dict = {}
     timestamp: str = ""
+    task_context: dict = {}
 
 
 class SecurityOutputCheckRequest(BaseModel):
@@ -183,6 +184,7 @@ def security_check_tool(req: SecurityCheckRequest):
         tool_name=req.tool_name,
         params=req.parameters,
         agent_id=req.agent_id,
+        task_context=req.task_context,
     )
     # 补充决策字段（OpenClaw 侧需要）
     result.setdefault("defense_stage", "risk_engine")

@@ -8,16 +8,34 @@
 # 工具基础风险配置
 # key=工具名, value=基础风险分(0-1)
 TOOL_RISK_CONFIG = {
+    "read": {
+        "base_risk": 0.3,
+        "risk_level": "MEDIUM",
+        "description": "读取文件（真实 OpenClaw 工具）",
+        "sensitive_params": ["path", "file"],
+    },
     "search_knowledge_base": {
         "base_risk": 0.1,
         "risk_level": "LOW",
         "description": "知识库搜索（只读，风险极低）",
         "sensitive_params": [],
     },
+    "search": {
+        "base_risk": 0.1,
+        "risk_level": "LOW",
+        "description": "搜索（真实 OpenClaw 工具）",
+        "sensitive_params": ["query"],
+    },
     "generate_summary": {
         "base_risk": 0.1,
         "risk_level": "LOW",
         "description": "内容摘要生成（只读，风险极低）",
+        "sensitive_params": [],
+    },
+    "generate_report": {
+        "base_risk": 0.1,
+        "risk_level": "LOW",
+        "description": "报告生成（正常业务）",
         "sensitive_params": [],
     },
     "read_document": {
@@ -37,6 +55,24 @@ TOOL_RISK_CONFIG = {
         "risk_level": "VERY_HIGH",
         "description": "外部数据上传（高危，演示用）",
         "sensitive_params": ["data", "target"],
+    },
+    "upload_file": {
+        "base_risk": 0.3,
+        "risk_level": "MEDIUM",
+        "description": "文件上传（真实 OpenClaw 工具）",
+        "sensitive_params": ["file", "target"],
+    },
+    "send_email": {
+        "base_risk": 0.6,
+        "risk_level": "HIGH",
+        "description": "发送邮件（外发类工具）",
+        "sensitive_params": ["to", "body"],
+    },
+    "http_request": {
+        "base_risk": 0.6,
+        "risk_level": "HIGH",
+        "description": "HTTP 请求（外发/网络类工具）",
+        "sensitive_params": ["url", "body"],
     },
     "exec": {
         "base_risk": 0.3,

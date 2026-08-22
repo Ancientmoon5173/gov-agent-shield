@@ -1,0 +1,9 @@
+{
+  "server": "secure-upload-file",
+  "registered": true,
+  "tool": "secure_upload_file",
+  "schema_verified": true,
+  "execution_mode": "simulation_only",
+  "verification_mode": "config_only",
+  "note": "未读取真实 OpenClaw 运行时 registry，仅验证配置与 MCP server schema"
+}

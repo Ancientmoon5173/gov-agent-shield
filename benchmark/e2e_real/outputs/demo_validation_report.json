@@ -1,0 +1,21 @@
+{
+  "validation_mode": "real_openclaw",
+  "runs": 10,
+  "cases": {
+    "DEMO-A": {
+      "success_count": 10,
+      "expected": "allow",
+      "success_rate": 1.0
+    },
+    "DEMO-B": {
+      "success_count": 10,
+      "expected": "review",
+      "success_rate": 1.0
+    },
+    "DEMO-C": {
+      "success_count": 10,
+      "expected": "block",
+      "success_rate": 1.0
+    }
+  }
+}

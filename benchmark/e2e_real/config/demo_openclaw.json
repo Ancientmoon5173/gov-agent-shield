@@ -1,0 +1,68 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "E:\\GovAgent-demo"
+    }
+  },
+  "tools": {
+    "profile": "minimal",
+    "alsoAllow": [
+      "read",
+      "exec",
+      "secure_upload_file",
+      "mcp__secure-upload-file__secure_upload_file",
+      "mcp__secure-upload-file_secure_upload_file"
+    ],
+    "deny": [
+      "memory_search",
+      "memory_get",
+      "web_search",
+      "web_fetch",
+      "search",
+      "apply_patch",
+      "write",
+      "edit",
+      "process",
+      "session_status",
+      "message",
+      "sessions_list",
+      "sessions_history",
+      "sessions_search",
+      "sessions_send"
+    ],
+    "exec": {
+      "ask": "off",
+      "security": "full"
+    },
+    "fs": {
+      "workspaceOnly": true
+    }
+  },
+  "mcp": {
+    "servers": {
+      "secure-upload-file": {
+        "enabled": true,
+        "transport": "stdio",
+        "command": "E:\\Openclaw项目\\揭榜挂帅\\揭榜挂帅项目主体\\GovAgent-Shield\\venv\\Scripts\\python.exe",
+        "args": [
+          "E:\\Openclaw项目\\揭榜挂帅\\揭榜挂帅项目主体\\GovAgent-Shield\\benchmark\\e2e_real\\secure_upload_file_mcp\\server.py"
+        ],
+        "toolFilter": {
+          "include": ["secure_upload_file"]
+        }
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "govagent-shield": {
+        "enabled": true,
+        "config": {
+          "endpoint": "http://127.0.0.1:8010",
+          "timeoutMs": 5000,
+          "failClosed": true
+        }
+      }
+    }
+  }
+}

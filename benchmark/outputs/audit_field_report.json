@@ -1,0 +1,1974 @@
+{
+  "schema_version": "1.0",
+  "source": "audit_validator",
+  "summary": {
+    "case_count": 50,
+    "required_field_count": 1578,
+    "valid_field_count": 1578,
+    "field_completeness": 1.0
+  },
+  "cases": [
+    {
+      "case_id": "PI-001",
+      "event_count": 5,
+      "required_field_count": 32,
+      "valid_field_count": 32,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17428,
+          "event_type": "data_exfiltration",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17429,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17430,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17431,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17432,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "PI-002",
+      "event_count": 6,
+      "required_field_count": 36,
+      "valid_field_count": 36,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17433,
+          "event_type": "data_exfiltration",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17434,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17435,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17436,
+          "event_type": "decoy_route_triggered",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17437,
+          "event_type": "data_provenance_injected",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17438,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "PI-003",
+      "event_count": 4,
+      "required_field_count": 25,
+      "valid_field_count": 25,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17439,
+          "event_type": "input_risk",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17440,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17441,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17442,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "PI-004",
+      "event_count": 6,
+      "required_field_count": 36,
+      "valid_field_count": 36,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17443,
+          "event_type": "prompt_injection",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17444,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17445,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17446,
+          "event_type": "decoy_route_triggered",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17447,
+          "event_type": "data_provenance_injected",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17448,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "PI-005",
+      "event_count": 5,
+      "required_field_count": 32,
+      "valid_field_count": 32,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17449,
+          "event_type": "data_exfiltration",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17450,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17451,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17452,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17453,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "PI-006",
+      "event_count": 6,
+      "required_field_count": 36,
+      "valid_field_count": 36,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17454,
+          "event_type": "data_exfiltration",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17455,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17456,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17457,
+          "event_type": "decoy_route_triggered",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17458,
+          "event_type": "data_provenance_injected",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17459,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "SA-001",
+      "event_count": 3,
+      "required_field_count": 21,
+      "valid_field_count": 21,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17460,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17461,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17462,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "SA-002",
+      "event_count": 3,
+      "required_field_count": 21,
+      "valid_field_count": 21,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17463,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17464,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17465,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "SA-003",
+      "event_count": 3,
+      "required_field_count": 21,
+      "valid_field_count": 21,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17466,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17467,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17468,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "SA-004",
+      "event_count": 3,
+      "required_field_count": 21,
+      "valid_field_count": 21,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17469,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17470,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17471,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "SA-005",
+      "event_count": 6,
+      "required_field_count": 42,
+      "valid_field_count": 42,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17472,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17473,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17474,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17475,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17476,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17477,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "SA-006",
+      "event_count": 3,
+      "required_field_count": 21,
+      "valid_field_count": 21,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17478,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17479,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17480,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "CA-001",
+      "event_count": 5,
+      "required_field_count": 32,
+      "valid_field_count": 32,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17481,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17482,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17483,
+          "event_type": "decoy_route_triggered",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17484,
+          "event_type": "data_provenance_injected",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17485,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "CA-002",
+      "event_count": 5,
+      "required_field_count": 32,
+      "valid_field_count": 32,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17486,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17487,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17488,
+          "event_type": "decoy_route_triggered",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17489,
+          "event_type": "data_provenance_injected",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17490,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "CA-003",
+      "event_count": 3,
+      "required_field_count": 21,
+      "valid_field_count": 21,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17491,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17492,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17493,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "CA-004",
+      "event_count": 5,
+      "required_field_count": 32,
+      "valid_field_count": 32,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17494,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17495,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17496,
+          "event_type": "decoy_route_triggered",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17497,
+          "event_type": "data_provenance_injected",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17498,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "CA-005",
+      "event_count": 8,
+      "required_field_count": 53,
+      "valid_field_count": 53,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17499,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17500,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17501,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17502,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17503,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17504,
+          "event_type": "decoy_route_triggered",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17505,
+          "event_type": "data_provenance_injected",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17506,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "CA-006",
+      "event_count": 3,
+      "required_field_count": 21,
+      "valid_field_count": 21,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17507,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17508,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17509,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "UE-001",
+      "event_count": 4,
+      "required_field_count": 28,
+      "valid_field_count": 28,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17510,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17511,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17512,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17513,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "UE-002",
+      "event_count": 4,
+      "required_field_count": 28,
+      "valid_field_count": 28,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17514,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17515,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17516,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17517,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "UE-003",
+      "event_count": 4,
+      "required_field_count": 28,
+      "valid_field_count": 28,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17518,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17519,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17520,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17521,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "UE-004",
+      "event_count": 4,
+      "required_field_count": 28,
+      "valid_field_count": 28,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17522,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17523,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17524,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17525,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "UE-005",
+      "event_count": 4,
+      "required_field_count": 28,
+      "valid_field_count": 28,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17526,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17527,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17528,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17529,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "UE-006",
+      "event_count": 5,
+      "required_field_count": 41,
+      "valid_field_count": 41,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17530,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17531,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17532,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17533,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17534,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "TC-001",
+      "event_count": 9,
+      "required_field_count": 60,
+      "valid_field_count": 60,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17535,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17536,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17537,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17538,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17539,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17540,
+          "event_type": "decoy_route_triggered",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17541,
+          "event_type": "data_provenance_injected",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17542,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17543,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "TC-002",
+      "event_count": 6,
+      "required_field_count": 45,
+      "valid_field_count": 45,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17544,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17545,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17546,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17547,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17548,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17549,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "TC-003",
+      "event_count": 4,
+      "required_field_count": 28,
+      "valid_field_count": 28,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17550,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17551,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17552,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17553,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "TC-004",
+      "event_count": 7,
+      "required_field_count": 49,
+      "valid_field_count": 49,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17554,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17555,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17556,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17557,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17558,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17559,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17560,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "TC-005",
+      "event_count": 4,
+      "required_field_count": 28,
+      "valid_field_count": 28,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17561,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17562,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17563,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17564,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "TC-006",
+      "event_count": 5,
+      "required_field_count": 41,
+      "valid_field_count": 41,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17565,
+          "event_type": "asset_resolved",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17566,
+          "event_type": "decoy_virtual_hit",
+          "required_field_count": 4,
+          "valid_field_count": 4,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17567,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17568,
+          "event_type": "behavior_chain",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17569,
+          "event_type": "data_provenance_leak_detected",
+          "required_field_count": 7,
+          "valid_field_count": 7,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "NQ-001",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17570,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17571,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "NQ-002",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17572,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17573,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "NQ-003",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17574,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17575,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "NQ-004",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17576,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17577,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "NQ-005",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17578,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17579,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "NQ-006",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17580,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17581,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "NQ-007",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17582,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17583,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "RG-001",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17584,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17585,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "RG-002",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17586,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17587,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "RG-003",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17588,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17589,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "RG-004",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17590,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17591,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "RG-005",
+      "event_count": 3,
+      "required_field_count": 39,
+      "valid_field_count": 39,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17592,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17593,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17594,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "RG-006",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17595,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17596,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "RG-007",
+      "event_count": 2,
+      "required_field_count": 26,
+      "valid_field_count": 26,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17597,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17598,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "DS-001",
+      "event_count": 3,
+      "required_field_count": 39,
+      "valid_field_count": 39,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17599,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17600,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17601,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "DS-002",
+      "event_count": 3,
+      "required_field_count": 39,
+      "valid_field_count": 39,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17602,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17603,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17604,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "DS-003",
+      "event_count": 3,
+      "required_field_count": 39,
+      "valid_field_count": 39,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17605,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17606,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17607,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "DS-004",
+      "event_count": 3,
+      "required_field_count": 39,
+      "valid_field_count": 39,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17608,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17609,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17610,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "DS-005",
+      "event_count": 3,
+      "required_field_count": 39,
+      "valid_field_count": 39,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17611,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17612,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17613,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    },
+    {
+      "case_id": "DS-006",
+      "event_count": 3,
+      "required_field_count": 39,
+      "valid_field_count": 39,
+      "field_completeness": 1.0,
+      "event_checks": [
+        {
+          "event_id": 17614,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17615,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        },
+        {
+          "event_id": 17616,
+          "event_type": "tool_risk",
+          "required_field_count": 13,
+          "valid_field_count": 13,
+          "missing_fields": [],
+          "valid": true
+        }
+      ]
+    }
+  ]
+}

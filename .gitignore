@@ -209,3 +209,9 @@ __marimo__/
 
 # OpenClaw 本地运行态（含设备身份私钥，不入库）
 benchmark/e2e_real/.openclaw-state/
+
+# 本地遗留/无需上传：历史备份、本地测试配置、运行预览残留
+backup_before_enhancement/
+openclaw_plugin测试配置/
+scripts/preview_output.txt
+redteam_missed.json

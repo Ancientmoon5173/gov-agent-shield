@@ -238,7 +238,6 @@ Python 决策 → HTTP Client → Hook 的 allow / warn / review / block / kill 
 GovAgent-Shield/
 ├── src/                  # Python：FastAPI、安全引擎、权限、审计、管理后台
 ├── openclaw_plugin/      # OpenClaw 插件（Node/TS）：Hook、HTTP、Decision Contract
-├── openclaw_adapter/     # 早期实验适配层（DEPRECATED）
 ├── tests/                # Python 测试与契约测试
 ├── samples/              # 正常任务样本与攻击样本
 └── scripts/              # 演示脚本

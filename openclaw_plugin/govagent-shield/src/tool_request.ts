@@ -32,6 +32,7 @@ export function buildToolRequest(
       (ctx as { taskContext?: unknown }).taskContext,
     ),
     timestamp: new Date().toISOString(),
+    plugin_tool_call_id: ctx.toolCallId ?? event.toolCallId ?? "",
   };
 }
 

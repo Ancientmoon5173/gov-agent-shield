@@ -13,6 +13,7 @@ export interface ToolRequest {
   context: Record<string, unknown>;
   task_context?: Record<string, unknown>;
   timestamp: string;
+  plugin_tool_call_id?: string;
 }
 
 export type { ShieldAction, ShieldDecision } from "./decision.js";

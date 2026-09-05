@@ -52,6 +52,64 @@ export class ShieldHttpClient {
     this.warn = options.warn ?? ((message) => console.warn(message));
   }
 
+  /** 上报工具真实执行结果（after_tool_call）。best-effort，不 fail-close。 */
+  async reportExecution(payload: {
+    call_id: string;
+    executed: boolean;
+    error?: string;
+    duration_ms?: number;
+  }): Promise<{ ok: boolean }> {
+    return this.postJson("/audit/execution", payload);
+  }
+
+  /** 上报审批结果（onResolution）。best-effort，不 fail-close。 */
+  async resolveApproval(payload: {
+    approval_id: string;
+    action: "approve" | "deny";
+    reviewer?: string;
+    comment?: string;
+  }): Promise<{ ok: boolean }> {
+    return this.postJson(
+      `/audit/approval/${encodeURIComponent(payload.approval_id)}`,
+      {
+        action: payload.action,
+        reviewer: payload.reviewer ?? "openclaw-approval",
+        comment: payload.comment ?? "",
+      },
+    );
+  }
+
+  private async postJson(
+    path: string,
+    body: unknown,
+  ): Promise<{ ok: boolean }> {
+    const url = `${this.endpoint}${path}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        this.warn(
+          `[GovAgentShield] audit POST ${path} 失败: HTTP ${response.status}`,
+        );
+        return { ok: false };
+      }
+      return { ok: true };
+    } catch (error) {
+      this.warn(
+        `[GovAgentShield] audit POST ${path} 失败: ${String(error)}`,
+      );
+      return { ok: false };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async sendToolRequest(request: ToolRequest): Promise<ShieldDecision> {
     const url = `${this.endpoint}/security/check_tool`;
     const controller = new AbortController();
@@ -123,6 +181,7 @@ export function parseDecision(data: Record<string, unknown>): ShieldDecision {
     };
   }
 
+  const correlation = parseCorrelation(data.correlation);
   return {
     action,
     risk_score: Number(data.risk_score ?? 0),
@@ -131,8 +190,41 @@ export function parseDecision(data: Record<string, unknown>): ShieldDecision {
     risk_level: String(data.risk_level ?? "LOW"),
     defense_stage: data.defense_stage as string | undefined,
     decision_reason: data.decision_reason as string | undefined,
+    ...(typeof data.approval_id === "string" && data.approval_id
+      ? { approval_id: data.approval_id }
+      : {}),
+    ...(typeof data.execution_status === "string" && data.execution_status
+      ? { execution_status: data.execution_status }
+      : {}),
+    ...(correlation ? { correlation } : {}),
     ...(decoyRoute ? { decoy_route: decoyRoute } : {}),
     ...(injectToken ? { inject_token: injectToken } : {}),
+  };
+}
+
+/**
+ * 解析并校验 V1 链路身份 correlation。
+ * 结构不合法时返回 undefined，由 Hook 按普通决策执行。
+ */
+function parseCorrelation(
+  raw: unknown,
+): ShieldDecision["correlation"] | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const record = raw as Record<string, unknown>;
+  if (typeof record.call_id !== "string" || !record.call_id) {
+    return undefined;
+  }
+  return {
+    session_id:
+      typeof record.session_id === "string" ? record.session_id : undefined,
+    chain_id: typeof record.chain_id === "string" ? record.chain_id : undefined,
+    call_id: record.call_id,
+    plugin_tool_call_id:
+      typeof record.plugin_tool_call_id === "string"
+        ? record.plugin_tool_call_id
+        : undefined,
   };
 }
 

@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+
+# Streamlit 启动时可能不包含项目根目录，这里显式自举，保证 src.* 可导入
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 
 """
 任务监控页面。
@@ -6,9 +14,11 @@
 
 import streamlit as st
 
-st.set_page_config(page_title="任务监控 - GovAgent-Shield SOC", layout="wide")
+from src.ui._page_config import safe_set_page_config
 
-from src.ui.data_provider import get_logger
+safe_set_page_config(page_title="任务监控 - GovAgent-Shield SOC", layout="wide")
+
+from src.ui.data_provider import fmt_time, get_logger
 
 logger = get_logger()
 
@@ -50,8 +60,8 @@ if events:
     rows = []
     for e in events:
         rows.append({
-            "时间": str(e.get("timestamp", ""))[11:19] if e.get("timestamp") else "",
-            "会话": str(e.get("session_id", ""))[:12],
+            "时间": fmt_time(e.get("timestamp")),
+            "会话ID": str(e.get("session_id", "")),
             "检测类型": e.get("check_type", ""),
             "工具": str(e.get("tool_name", ""))[:20],
             "风险评分": e.get("risk_score", 0),

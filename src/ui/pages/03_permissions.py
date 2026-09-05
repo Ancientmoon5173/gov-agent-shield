@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+
+# Streamlit 启动时可能不包含项目根目录，这里显式自举，保证 src.* 可导入
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 
 """
 权限管理页面。
@@ -6,7 +14,9 @@
 
 import streamlit as st
 
-st.set_page_config(page_title="权限管理 - GovAgent-Shield SOC", layout="wide")
+from src.ui._page_config import safe_set_page_config
+
+safe_set_page_config(page_title="权限管理 - GovAgent-Shield SOC", layout="wide")
 
 from src.ui.data_provider import get_permission_storage, get_orchestrator
 

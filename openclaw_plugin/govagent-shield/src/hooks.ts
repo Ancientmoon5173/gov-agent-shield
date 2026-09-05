@@ -43,6 +43,14 @@ export interface ShieldHookResult extends PluginHookBeforeToolCallResult {
   terminate?: boolean;
 }
 
+/** OpenClaw requireApproval.onResolution 返回的决策值。 */
+export type PluginApprovalResolutionValue =
+  | "allow-once"
+  | "allow-always"
+  | "deny"
+  | "timeout"
+  | "cancelled";
+
 export interface GovAgentShieldHooks {
   beforeToolCall(
     event: PluginHookBeforeToolCallEvent,
@@ -75,6 +83,97 @@ export function createGovAgentShieldHooks(
     });
   const pendingInjections = new Map<string, DataProvenanceInjectToken>();
 
+  /** V1 闭环：toolCallId -> 本次调用的引擎关联信息（供审批/执行结果回写） */
+  interface PendingCallRecord {
+    call_id: string;
+    chain_id?: string;
+    plugin_tool_call_id?: string;
+    action?: ShieldAction;
+    approval_id?: string;
+    denied?: boolean;
+  }
+  const pendingCalls = new Map<string, PendingCallRecord>();
+
+  const shieldHttp = client as ShieldHttpClient;
+  const reportExecution = async (payload: {
+    call_id: string;
+    executed: boolean;
+    error?: string;
+    duration_ms?: number;
+  }) => {
+    try {
+      const fn = (
+        shieldHttp as ShieldHttpClient & {
+          reportExecution?: (
+            p: typeof payload,
+          ) => Promise<{ ok: boolean }>;
+        }
+      ).reportExecution;
+      if (typeof fn === "function") {
+        await fn.call(shieldHttp, payload);
+      }
+    } catch (err) {
+      warn(`[GovAgentShield] audit execution report failed: ${String(err)}`);
+    }
+  };
+  const resolveApproval = async (payload: {
+    approval_id: string;
+    action: "approve" | "deny";
+    reviewer?: string;
+    comment?: string;
+  }) => {
+    try {
+      const fn = (
+        shieldHttp as ShieldHttpClient & {
+          resolveApproval?: (
+            p: typeof payload,
+          ) => Promise<{ ok: boolean }>;
+        }
+      ).resolveApproval;
+      if (typeof fn === "function") {
+        await fn.call(shieldHttp, payload);
+      }
+    } catch (err) {
+      warn(`[GovAgentShield] audit approval report failed: ${String(err)}`);
+    }
+  };
+
+  const handleApprovalResolution = async (
+    toolCallId: string,
+    resolution: PluginApprovalResolutionValue,
+  ) => {
+    const record = toolCallId ? pendingCalls.get(toolCallId) : undefined;
+    if (!record) {
+      return;
+    }
+    if (resolution === "allow-once" || resolution === "allow-always") {
+      if (record.approval_id) {
+        await resolveApproval({
+          approval_id: record.approval_id,
+          action: "approve",
+          reviewer: "openclaw-approval",
+          comment: `OpenClaw 审批通过: ${resolution}`,
+        });
+      }
+      return;
+    }
+    // deny / timeout / cancelled → 记录拒绝与未执行
+    record.denied = true;
+    if (record.approval_id) {
+      await resolveApproval({
+        approval_id: record.approval_id,
+        action: "deny",
+        reviewer: "openclaw-approval",
+        comment: `OpenClaw 审批拒绝: ${resolution}`,
+      });
+    }
+    await reportExecution({
+      call_id: record.call_id,
+      executed: false,
+      error: "",
+    });
+  };
+
   return {
     async beforeToolCall(event, ctx) {
       if (!enabled) {
@@ -100,13 +199,27 @@ export function createGovAgentShieldHooks(
       }
 
       log(formatShieldLog(request, decision));
-      if (decision.inject_token) {
-        const toolCallId = ctx.toolCallId ?? event.toolCallId ?? "";
-        if (toolCallId) {
-          pendingInjections.set(toolCallId, decision.inject_token);
-        }
+      const toolCallId = ctx.toolCallId ?? event.toolCallId ?? "";
+      if (decision.inject_token && toolCallId) {
+        pendingInjections.set(toolCallId, decision.inject_token);
       }
-      return executeDecision(decision, { log, warn, request });
+      if (toolCallId && decision.correlation?.call_id) {
+        pendingCalls.set(toolCallId, {
+          call_id: decision.correlation.call_id,
+          chain_id: decision.correlation.chain_id,
+          plugin_tool_call_id: decision.correlation.plugin_tool_call_id,
+          action: decision.action,
+          approval_id: decision.approval_id,
+        });
+      }
+      return executeDecision(decision, {
+        log,
+        warn,
+        request,
+        toolCallId,
+        onApprovalResolution: (resolution) =>
+          handleApprovalResolution(toolCallId, resolution),
+      });
     },
 
     toolResultPersist(event, _ctx) {
@@ -152,6 +265,29 @@ export function createGovAgentShieldHooks(
           `durationMs=${event.durationMs ?? "n/a"} ` +
           `error=${event.error ? "yes" : "no"}`,
       );
+      const toolCallId = (event as { toolCallId?: string }).toolCallId ?? "";
+      const record = toolCallId ? pendingCalls.get(toolCallId) : undefined;
+      if (!record) {
+        return;
+      }
+      pendingCalls.delete(toolCallId);
+      if (record.denied) {
+        // 审批拒绝 / 阻断确认已在 onResolution 上报 NOT_EXECUTED
+        return;
+      }
+      const executed = !event.error;
+      const errorText = event.error
+        ? String(
+            (event as { errorReason?: unknown }).errorReason ??
+              "tool blocked or failed",
+          )
+        : "";
+      await reportExecution({
+        call_id: record.call_id,
+        executed,
+        error: executed ? "" : errorText,
+        duration_ms: event.durationMs ?? undefined,
+      });
     },
   };
 }
@@ -165,6 +301,10 @@ export function executeDecision(
     log?: (message: string) => void;
     warn?: (message: string) => void;
     request?: ToolRequest;
+    toolCallId?: string;
+    onApprovalResolution?: (
+      resolution: PluginApprovalResolutionValue,
+    ) => Promise<void> | void;
   } = {},
 ): ShieldHookResult | undefined {
   const log = context.log ?? ((message: string) => console.log(message));
@@ -182,12 +322,16 @@ export function executeDecision(
       return applyDecoyRoute(decision, log, context.request);
 
     case "review":
-      return requireApproval(decision, { request: context.request });
+      return requireApproval(decision, {
+        request: context.request,
+        onResolution: context.onApprovalResolution,
+      });
 
     case "block":
       return requireApproval(decision, {
         denyOnly: true,
         request: context.request,
+        onResolution: context.onApprovalResolution,
       });
 
     case "kill":
@@ -195,6 +339,7 @@ export function executeDecision(
         denyOnly: true,
         terminate: true,
         request: context.request,
+        onResolution: context.onApprovalResolution,
       });
 
     default:
@@ -313,6 +458,9 @@ export function requireApproval(
     denyOnly?: boolean;
     terminate?: boolean;
     request?: ToolRequest;
+    onResolution?: (
+      resolution: PluginApprovalResolutionValue,
+    ) => Promise<void> | void;
   } = {},
 ): ShieldHookResult {
   const denyOnly = options.denyOnly ?? false;
@@ -335,6 +483,9 @@ export function requireApproval(
       allowedDecisions: denyOnly
         ? ["deny"]
         : ["allow-once", "deny"],
+      ...(options.onResolution
+        ? { onResolution: options.onResolution }
+        : {}),
     },
   };
 }

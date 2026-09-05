@@ -31,20 +31,30 @@ Agent 行为感知、安全决策和审计追踪。
 
 ---
 
-## 2. Quick Start
+## 2. 快速部署与启动（虚拟环境 / 引擎 / 审批网页 / OpenClaw 插件）
 
-### 环境要求
+> 本项目共 3 个常驻服务：Python 安全引擎(8000)、SOC 审批·审计网页(8501)、OpenClaw(运行插件)。
+> 顺序：装环境 → 启引擎 → 启 SOC → 部署插件 → 启动 OpenClaw。
+
+### 2.1 环境要求
 
 - Python >= 3.11
 - Node.js（OpenClaw 运行时）
 - OpenClaw（本地 `openclaw-main` 源码或发行版，自用版本为7.2）
 
-### 第一步：启动 Python 安全服务
+### 2.2 一次性准备：创建虚拟环境并安装依赖
 
 ```powershell
+cd E:\Openclaw项目\揭榜挂帅\揭榜挂帅项目主体\GovAgent-Shield
 python -m venv venv
-venv\Scripts\pip install -r requirements.txt
-venv\Scripts\python -m uvicorn src.main:app --port 8000
+venv\Scripts\python -m pip install --upgrade pip
+venv\Scripts\python -m pip install -r requirements.txt
+```
+
+### 2.3 启动 Python 安全引擎（终端 1，保持运行）
+
+```powershell
+venv\Scripts\python -m uvicorn src.main:app --host 127.0.0.1 --port 8000
 ```
 
 验证：
@@ -54,37 +64,90 @@ Invoke-WebRequest http://127.0.0.1:8000/health
 # {"status":"healthy"}
 ```
 
-### 第二步：部署 OpenClaw 插件
-
-将插件目录复制到 OpenClaw 扩展目录：
+### 2.4 启动 SOC 审批 / 审计网页（终端 2，保持运行）
 
 ```powershell
-Copy-Item -Recurse openclaw_plugin\govagent-shield D:\OpenClaw\openclaw-main\extensions\govagent-shield
+venv\Scripts\python -m streamlit run src/ui/app.py
 ```
-（此处当换成本地部署openclaw的路径）
 
-在 OpenClaw 配置（`openclaw.json`）中启用：
+浏览器打开（端口 8501）：
+
+| 页面 | 地址 | 用途 |
+|---|---|---|
+| Dashboard | http://localhost:8501 | 系统总览 |
+| 任务监控 | http://localhost:8501/monitoring | 实时事件日志（含会话ID） |
+| 安全事件 | http://localhost:8501/incidents | 按攻击类型分类 |
+| 权限管理 | http://localhost:8501/permissions | Agent 权限配置 |
+| **审批管理** | http://localhost:8501/approvals | **审批人员操作页**（通过/拒绝） |
+| **审计回放** | http://localhost:8501/audit_replay | **按 session_id 查完整证据链** |
+
+> 审批动作直接写本地 SQLite（`data/audit_logs/security_events.db`），页面即时刷新；
+> 引擎需保持运行以持续产生待审批事件与审计记录。
+
+### 2.5 部署并启动 OpenClaw 插件
+
+**第一步：同步插件源码到 OpenClaw 扩展目录**（把 `D:\OpenClaw\openclaw-main` 换成你本地的实际路径）：
+
+```powershell
+Copy-Item -Recurse -Force openclaw_plugin\govagent-shield D:\OpenClaw\openclaw-main\extensions\govagent-shield
+```
+
+**第二步：在 OpenClaw 配置（`openclaw.json`）中启用插件并指向引擎**：
 
 ```jsonc
 {
   "plugins": {
     "entries": {
       "govagent-shield": {
-        "enabled": true
+        "enabled": true,
+        "options": {
+          "endpoint": "http://127.0.0.1:8000",
+          "timeoutMs": 5000,
+          "failClosed": true
+        }
       }
     }
   }
 }
 ```
 
-### 第三步：验证接入
+**第三步：启动 / 重启 OpenClaw**（修改配置后必须重启网关）：
 
 ```powershell
 cd D:\OpenClaw\openclaw-main
-node openclaw.mjs plugins list --json
+node openclaw.mjs
 ```
 
-确认输出中包含 `govagent-shield` 且 `status: "loaded"`。
+> 具体启动命令以你本地 OpenClaw 版本为准；本仓库演示基于 `openclaw-main`。
+
+### 2.6 验证三端已打通
+
+```powershell
+# 1) 插件已加载（应看到 govagent-shield 且 status: loaded）
+cd D:\OpenClaw\openclaw-main
+node openclaw.mjs plugins list --json
+
+# 2) 引擎健康
+Invoke-WebRequest http://127.0.0.1:8000/health
+```
+
+在 OpenClaw 对话中触发一次工具调用后：
+
+- 插件控制台出现 `[GovAgentShield] ... decision: ...`；
+- 决策为 `review` 时 OpenClaw 弹审批窗（allow-once / deny），或到 SOC「审批管理」页处理；
+- SOC「任务监控 / 审计回放」能按 session_id 看到本次事件的完整证据链；
+- 若审批弹窗提示 `no approval route`：按
+  [openclaw_plugin/govagent-shield/README.md](openclaw_plugin/govagent-shield/README.md)
+  配置 OpenClaw 审批路由（`approvals.plugin`）或连接审批 UI。
+
+### 2.7 常用端口与目录速查
+
+| 项 | 值 |
+|---|---|
+| Python 安全引擎 | http://127.0.0.1:8000 |
+| SOC（审批/审计网页） | http://localhost:8501 |
+| 审计 SQLite | `data/audit_logs/security_events.db` |
+| SOC → 引擎 API 地址 | 环境变量 `GOVAGENT_API_BASE`（默认 8000；审批写库为本地 SQLite，一般无需设置） |
 
 更详细的插件安装、配置与验证见
 [openclaw_plugin/govagent-shield/README.md](openclaw_plugin/govagent-shield/README.md)。
@@ -128,7 +191,8 @@ Python 引擎（`src/security`）负责：
 ```
 InputGuard → ParameterChecker → DataClassifier → AssetResolver
 → BehaviorAnalyzer → BehaviorObserver → DecoyManager
-→ PermissionChecker → RiskScorer → DispositionEngine → AuditLogger
+→ PermissionChecker → RiskScorer → DispositionEngine
+→ Allow / Review / Block → 实际执行 / 不执行 → SecurityLogger（SQLite）
 ```
 
 | 模块 | 职责 |
@@ -145,7 +209,7 @@ InputGuard → ParameterChecker → DataClassifier → AssetResolver
 | PermissionChecker | 权限策略（single_user / enterprise） |
 | RiskScorer | 多维风险融合评分 |
 | DispositionEngine | 最终决策：allow / warn / review / block / kill |
-| AuditLogger | SQLite 审计事件记录 |
+| SecurityLogger | SQLite 审计事件记录（V1 闭环：call_id/chain_id/step_no + 审批与执行结果回写） |
 
 ---
 
@@ -167,6 +231,38 @@ OpenClaw 插件侧，`block` / `kill` 决策通过 deny-only 审批弹窗执行�
 仅提供"拒绝"选项，用户确认后工具才被阻断，保持强制阻断语义。
 
 ---
+
+## 4.2 V1 工具调用级闭环与审计链路
+
+一次 ToolCall 在决策后继续闭环到“真实执行结果”，并在 SQLite 中留下可回放证据链：
+
+```
+用户输入 → check_tool → 资产/数据/行为/风险 → Disposition
+→ Allow / Review / Block
+→ 审批（approve/deny）与执行结果（after_tool_call 上报）
+→ security_events（call_id / chain_id / event_uuid / step_no）
+→ UI 审计回放 / 审计 API
+```
+
+- 每次工具调用分配 `call_id`，同一调用的所有事件行共享；`chain_id` 按会话稳定生成。
+- review 决策在引擎侧落 `audit_approvals` 表（跨进程可见，SOC 与引擎共享 SQLite）。
+- 插件 `requireApproval.onResolution` 把审批结果回写 `/audit/approval/{id}`；
+  `after_tool_call` 把真实执行结果回写 `/audit/execution`。
+- 终态：allow→EXECUTED / review→approved+EXECUTED 或 denied+NOT_EXECUTED /
+  block·kill→NOT_EXECUTED。
+
+新增审计 API：
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/audit/chains/{session_id}` | 会话级证据链（Chain → Call → Step） |
+| GET | `/audit/calls/{call_id}` | 单次调用完整证据（决策+审批+执行） |
+| GET | `/audit/approvals?status=` | 审批列表（pending/approved/denied） |
+| POST | `/audit/approval/{approval_id}` | 审批通过/拒绝（记录 reviewer） |
+| POST | `/audit/execution` | 插件上报真实执行结果 |
+| GET | `/audit/summary` | 各决策执行终态统计 |
+
+SOC 新增「审计回放」页（`src/ui/pages/05_audit_replay.py`），审批页改为 SQLite 闭环版。
 
 ## 5. Demo Scenario
 

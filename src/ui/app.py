@@ -1,3 +1,11 @@
+import sys
+from pathlib import Path
+
+# Streamlit 启动时可能不包含项目根目录，这里显式自举，保证 src.* 可导入
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 
 """
 GovAgent-Shield 安全运营中心
@@ -14,7 +22,9 @@ GovAgent-Shield 安全运营中心
 
 import streamlit as st
 
-st.set_page_config(
+from src.ui._page_config import safe_set_page_config
+
+safe_set_page_config(
     page_title="GovAgent-Shield SOC",
     page_icon="🛡️",
     layout="wide",
@@ -52,7 +62,7 @@ st.sidebar.divider()
 # Streamlit multi-page handles routing via pages/*.py
 # This file serves as the landing page (Dashboard).
 
-from src.ui.data_provider import get_logger, get_permission_storage
+from src.ui.data_provider import fmt_time, get_logger, get_permission_storage
 
 logger = get_logger()
 summary = logger.get_summary()
@@ -78,9 +88,8 @@ pending = 0
 
 # Count pending approvals
 try:
-    from src.ui.data_provider import get_orchestrator
-    orc = get_orchestrator()
-    pending = len(orc.permission_checker._core.approval_manager.get_pending())
+    from src.ui.data_provider import get_audit_logger
+    pending = len(get_audit_logger().get_pending_approvals())
 except Exception:
     pass
 
@@ -98,7 +107,8 @@ if events:
     rows = []
     for e in events:
         rows.append({
-            "时间": str(e.get("timestamp", ""))[11:19] if e.get("timestamp") else "",
+            "时间": fmt_time(e.get("timestamp")),
+            "会话ID": str(e.get("session_id", "")),
             "类型": e.get("check_type", ""),
             "工具": str(e.get("tool_name", ""))[:20],
             "评分": e.get("risk_score", 0),

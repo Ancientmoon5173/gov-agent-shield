@@ -19,18 +19,19 @@ from src.tool_gateway import ToolGateway
 from src.tool_gateway.policies import get_default_gateway
 from src.risk_engine import RiskScorer, DispositionEngine
 from src.risk_engine.actions import PASSING_ACTIONS, BLOCKING_ACTIONS
-from src.config import (
-    RISK_THRESHOLD_LOW,
-    RISK_THRESHOLD_MEDIUM,
-    RISK_THRESHOLD_HIGH,
-    PERMISSION_FORCE_BLOCK,
-)
+from src.config import PERMISSION_FORCE_BLOCK
 
 from .tool_risk_config import TOOL_RISK_CONFIG
 from .parameter_checker import ParameterChecker, create_parameter_checker
 from .behavior_analyzer import BehaviorAnalyzer, create_behavior_analyzer
 from .output_guard import OutputGuard, create_output_guard
-from .security_logger import SecurityLogger, create_security_logger
+from .security_logger import (
+    SecurityLogger,
+    create_security_logger,
+    STATUS_PENDING_EXECUTION,
+    STATUS_PENDING_APPROVAL,
+    STATUS_NOT_EXECUTED,
+)
 from .permission_checker import PermissionChecker, create_permission_checker
 from .decoy_manager import DecoyManager, create_decoy_manager
 from .data_classifier import DataClassifier, create_data_classifier
@@ -165,6 +166,7 @@ class SecurityOrchestrator:
             user_input: 用户输入
             context_text: 可选上下文文本（知识库/文档内容污染检测）
         """
+        self.security_logger.clear_call()
         scan_result = self.input_detector.scan(user_input)
         leak_result = self.sensitive_data_leak_detector.scan(user_input)
         if leak_result["risk_score"] > scan_result.get("risk_score", 0):
@@ -254,6 +256,7 @@ class SecurityOrchestrator:
         user_input: str = "",
         agent_id: str = "default_agent",
         task_context: Dict[str, Any] = None,
+        plugin_tool_call_id: str = None,
     ) -> Dict[str, Any]:
         """
         检查工具调用安全性（核心检测点）。
@@ -264,6 +267,11 @@ class SecurityOrchestrator:
         """
         tool_config = TOOL_RISK_CONFIG.get(tool_name, {})
         r_tool_base = tool_config.get("base_risk", 0.5)
+
+        # V1：每次工具调用分配唯一身份（call_id/chain_id 贯穿本调用所有事件行）
+        call_id = self.security_logger.open_call(
+            session_id, plugin_tool_call_id
+        )
 
         # 1. 参数风险
         param_result = self.parameter_checker.check(tool_name, params)
@@ -276,6 +284,27 @@ class SecurityOrchestrator:
             "data_findings": data_result["findings"],
         }
         r_tool = max(r_tool, data_result["risk_score"])
+
+        # 1.1.1 数据分级事件（V1：SENSITIVE/CRITICAL 记录一行，链路可读）
+        if data_context["data_class"] in ("SENSITIVE", "CRITICAL"):
+            self.security_logger.log_check(
+                session_id=session_id, check_type="data_classified",
+                tool_name=tool_name, tool_params=params,
+                risk_score=data_result["risk_score"],
+                risk_level=(
+                    "HIGH" if data_context["data_class"] == "CRITICAL"
+                    else "MEDIUM"
+                ),
+                disposition="observed",
+                details=data_context,
+                event_type="data_classified",
+                decision_reason=(
+                    f"数据分级: {data_context['data_class']} "
+                    f"{','.join(data_context['data_findings'])}"
+                ),
+                defense_stage="data_classifier",
+                chain_summary=self._build_chain_summary(session_id),
+            )
 
         # 1.2 资产身份识别（AssetResolver）
         asset_context = self.asset_resolver.resolve(tool_name, params)
@@ -382,6 +411,8 @@ class SecurityOrchestrator:
                 decision_reason="检测到数据溯源令牌外泄，阻断外发",
                 defense_stage="data_provenance",
                 chain_summary=self._build_chain_summary(session_id),
+                step_no=90,
+                execution_status=STATUS_NOT_EXECUTED,
             )
             return {
                 "blocked": True,
@@ -395,6 +426,10 @@ class SecurityOrchestrator:
                 "decision_reason": "检测到数据溯源令牌外泄，阻断外发",
                 "data_provenance": dpt_result,
                 "asset": asset_context,
+                "correlation": self._correlation(
+                    session_id, call_id, plugin_tool_call_id
+                ),
+                "execution_status": STATUS_NOT_EXECUTED,
             }
 
         # 4. 记录诱饵事件到 BehaviorAnalyzer
@@ -436,6 +471,8 @@ class SecurityOrchestrator:
                     decision_reason=perm_result.reason,
                     defense_stage="permission_checker",
                     chain_summary=self._build_chain_summary(session_id),
+                    step_no=90,
+                    execution_status=STATUS_NOT_EXECUTED,
                 )
                 return {
                     "blocked": True, "risk_score": 1.0, "risk_level": "VERY_HIGH",
@@ -448,15 +485,29 @@ class SecurityOrchestrator:
                     "permission_policy": perm_policy,
                     "defense_stage": "permission_checker",
                     "decision_reason": perm_result.reason,
+                    "correlation": self._correlation(
+                        session_id, call_id, plugin_tool_call_id
+                    ),
+                    "execution_status": STATUS_NOT_EXECUTED,
                 }
 
             if perm_action == "review":
+                # V1：审批落库（SQLite，跨进程可见）
+                approval_id = self.security_logger.create_approval(
+                    session_id=session_id, call_id=call_id,
+                    agent_id=agent_id, tool_name=tool_name,
+                    tool_params=params,
+                    policy_id="permission:review",
+                    decision_reason=perm_result.reason,
+                    risk_score=0.7, risk_level="HIGH",
+                )
                 self.security_logger.log_check(
                     session_id=session_id, check_type="permission",
                     tool_name=tool_name, tool_params=params,
                     risk_score=0.7, risk_level="HIGH", disposition="review",
                     details={
-                        "approval_id": perm_result.approval_id,
+                        "legacy_approval_id": perm_result.approval_id,
+                        "approval_id": approval_id,
                         "reason": perm_result.reason,
                         "policy": perm_policy,
                     },
@@ -465,6 +516,9 @@ class SecurityOrchestrator:
                     decision_reason=perm_result.reason,
                     defense_stage="permission_checker",
                     chain_summary=self._build_chain_summary(session_id),
+                    step_no=90,
+                    execution_status=STATUS_PENDING_APPROVAL,
+                    approval_id=approval_id,
                 )
                 return {
                     "blocked": False, "risk_score": 0.7, "risk_level": "HIGH",
@@ -474,10 +528,15 @@ class SecurityOrchestrator:
                     "dimensions": {"R_permission": 0.7}, "param_findings": [],
                     "behavior": behavior_result,
                     "decoy": decoy_result,
-                    "approval_id": perm_result.approval_id,
+                    "approval_id": approval_id,
+                    "permission_approval_id": perm_result.approval_id,
                     "permission_policy": perm_policy,
                     "defense_stage": "permission_checker",
                     "decision_reason": perm_result.reason,
+                    "correlation": self._correlation(
+                        session_id, call_id, plugin_tool_call_id
+                    ),
+                    "execution_status": STATUS_PENDING_APPROVAL,
                 }
 
             r_permission = 0.0
@@ -669,6 +728,24 @@ class SecurityOrchestrator:
             perm_action=perm_action,
         )
 
+        # V1：闭环状态 + 审批落库（review 必须可人工审批）
+        approval_id = None
+        if disposition["action"] == "review":
+            approval_id = self.security_logger.create_approval(
+                session_id=session_id, call_id=call_id,
+                agent_id=agent_id, tool_name=tool_name,
+                tool_params=params,
+                policy_id=disposition.get("policy_id", ""),
+                decision_reason=disposition.get("reason", ""),
+                risk_score=risk["total_score"],
+                risk_level=risk["level"],
+            )
+            execution_status = STATUS_PENDING_APPROVAL
+        elif disposition["action"] in ("block", "kill"):
+            execution_status = STATUS_NOT_EXECUTED
+        else:
+            execution_status = STATUS_PENDING_EXECUTION
+
         # 8. 日志记录
         self.security_logger.log_check(
             session_id=session_id, check_type="tool_call",
@@ -697,6 +774,9 @@ class SecurityOrchestrator:
             decision_reason=disposition.get("reason", ""),
             defense_stage=defense_stage,
             chain_summary=self._build_chain_summary(session_id),
+            step_no=90,
+            execution_status=execution_status,
+            approval_id=approval_id,
         )
 
         return {
@@ -721,11 +801,17 @@ class SecurityOrchestrator:
             "data_provenance": dpt_result,
             "inject_token": inject_token,
             "task_context": task_context or {},
+            "approval_id": approval_id,
+            "execution_status": execution_status,
+            "correlation": self._correlation(
+                session_id, call_id, plugin_tool_call_id
+            ),
         }
 
     def check_output(self, session_id: str, tool_name: str,
                      output_text: str) -> Dict[str, Any]:
         """检查工具输出是否包含敏感数据。"""
+        self.security_logger.clear_call()
         scan_result = self.output_guard.scan(output_text)
 
         if scan_result["has_sensitive_data"]:
@@ -759,6 +845,16 @@ class SecurityOrchestrator:
             "policy_id": "output:allow",
             "findings": [],
             "masked_output": output_text,
+        }
+
+    def _correlation(self, session_id: str, call_id: str,
+                     plugin_tool_call_id: str = None) -> Dict[str, Any]:
+        """返回一次工具调用的链路身份（供 API/插件回写关联）。"""
+        return {
+            "session_id": session_id,
+            "chain_id": self.security_logger.chain_id_for_session(session_id),
+            "call_id": call_id,
+            "plugin_tool_call_id": plugin_tool_call_id,
         }
 
     def _map_disposition(self, score: float, level: str) -> Dict[str, str]:

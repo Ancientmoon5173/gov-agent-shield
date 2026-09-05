@@ -58,6 +58,7 @@ class SecurityCheckRequest(BaseModel):
     context: dict = {}
     timestamp: str = ""
     task_context: dict = {}
+    plugin_tool_call_id: str = ""
 
 
 class SecurityOutputCheckRequest(BaseModel):
@@ -185,6 +186,11 @@ def security_check_tool(req: SecurityCheckRequest):
         params=req.parameters,
         agent_id=req.agent_id,
         task_context=req.task_context,
+        plugin_tool_call_id=(
+            req.plugin_tool_call_id
+            or (req.context or {}).get("tool_call_id")
+            or ""
+        ),
     )
     # 补充决策字段（OpenClaw 侧需要）
     result.setdefault("defense_stage", "risk_engine")
@@ -206,6 +212,126 @@ def security_check_output(req: SecurityOutputCheckRequest):
         output_text=req.output_text,
     )
     return result
+
+
+# ========================
+# V1 审计闭环 API
+# ========================
+
+class ApprovalResolveRequest(BaseModel):
+    """审批请求体。action: approve | deny。"""
+    action: str
+    reviewer: str = ""
+    comment: str = ""
+
+
+class ExecutionReportRequest(BaseModel):
+    """执行结果上报请求体（插件 after_tool_call 调用）。"""
+    call_id: str
+    executed: bool
+    error: str = ""
+    duration_ms: float = None
+
+
+@app.get("/audit/chains/{session_id}")
+def audit_chain(session_id: str):
+    """按 session 查询完整审计链（Chain → Call → Step）。"""
+    orch = get_security_orchestrator()
+    chain = orch.security_logger.get_chain(session_id)
+    if not chain.get("events"):
+        raise HTTPException(status_code=404, detail="会话无审计记录")
+    return chain
+
+
+@app.get("/audit/calls/{call_id}")
+def audit_call(call_id: str):
+    """查询一次工具调用的完整证据（决策 + 审批 + 执行结果）。"""
+    orch = get_security_orchestrator()
+    call = orch.security_logger.get_call(call_id)
+    if not call.get("events"):
+        raise HTTPException(status_code=404, detail="call_id 无审计记录")
+    return call
+
+
+@app.get("/audit/approvals")
+def audit_approvals(status: str = None, limit: int = 200):
+    """查询审批记录；status ∈ pending / approved / denied。"""
+    orch = get_security_orchestrator()
+    if status:
+        approvals = orch.security_logger.get_approvals(status=status, limit=limit)
+    else:
+        approvals = orch.security_logger.get_approvals(limit=limit)
+    return {"total": len(approvals), "approvals": approvals}
+
+
+@app.post("/audit/approval/{approval_id}")
+def audit_approval_resolve(approval_id: str, req: ApprovalResolveRequest):
+    """审批通过 / 拒绝（记录 reviewer 与执行终态）。"""
+    orch = get_security_orchestrator()
+    result = orch.security_logger.resolve_approval(
+        approval_id=approval_id,
+        action=req.action,
+        reviewer=req.reviewer,
+        comment=req.comment,
+    )
+    if not result.get("ok"):
+        existing = orch.security_logger.get_approval(approval_id)
+        if existing is None:
+            raise HTTPException(status_code=404, detail=result.get("error"))
+        raise HTTPException(status_code=409, detail=result.get("error"))
+    return result
+
+
+@app.post("/audit/execution")
+def audit_execution(req: ExecutionReportRequest):
+    """插件上报工具真实执行结果（after_tool_call）。"""
+    orch = get_security_orchestrator()
+    result = orch.security_logger.log_execution_outcome(
+        call_id=req.call_id,
+        executed=req.executed,
+        error=req.error,
+        duration_ms=req.duration_ms,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=404, detail=result.get("error"))
+    return result
+
+
+@app.get("/audit/summary")
+def audit_summary():
+    """闭环统计：各决策（allow/review/block/kill）的执行终态分布。"""
+    orch = get_security_orchestrator()
+    events = orch.security_logger.get_recent_events(500)
+    tool_calls = [e for e in events if e.get("check_type") == "tool_call"]
+    by_action = {}
+    for e in tool_calls:
+        d = str(e.get("disposition", "allow"))
+        s = str(e.get("execution_status") or "UNKNOWN")
+        by_action.setdefault(d, {}).setdefault(s, 0)
+        by_action[d][s] += 1
+    return {
+        "total_tool_calls": len(tool_calls),
+        "by_action_execution_status": by_action,
+        "pending_approvals": len(orch.security_logger.get_pending_approvals()),
+    }
+
+
+@app.get("/audit/session/{session_id}/tree")
+def audit_session_tree(session_id: str):
+    """Phase1：按 session 组装 Session→Chain→Call→Event 树 + 因果路径 + 升级记录。"""
+    orch = get_security_orchestrator()
+    tree = orch.security_logger.get_audit_tree(session_id)
+    if not tree.get("total_events"):
+        raise HTTPException(status_code=404, detail="会话无审计记录")
+    return tree
+
+
+@app.get("/audit/session/{session_id}/escalations")
+def audit_session_escalations(session_id: str):
+    """Phase1：获取该会话的风险升级记录（回答风险为何上升）。"""
+    orch = get_security_orchestrator()
+    rows = orch.security_logger.get_escalations(session_id=session_id)
+    return {"session_id": session_id, "total": len(rows), "escalations": rows}
 
 
 if __name__ == "__main__":

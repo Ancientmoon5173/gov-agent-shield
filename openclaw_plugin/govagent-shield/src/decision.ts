@@ -26,6 +26,17 @@ export interface ShieldDecision {
   decision_reason?: string;
   decoy_route?: DecoyRoute;
   inject_token?: DataProvenanceInjectToken;
+  /** V1 闭环：引擎审批 ID（review 时返回） */
+  approval_id?: string;
+  /** V1 闭环：决策初始执行状态（PENDING_EXECUTION / PENDING_APPROVAL / NOT_EXECUTED） */
+  execution_status?: string;
+  /** V1 闭环：一次工具调用的链路身份（供插件回写关联） */
+  correlation?: {
+    session_id?: string;
+    chain_id?: string;
+    call_id?: string;
+    plugin_tool_call_id?: string;
+  };
 }
 
 /**

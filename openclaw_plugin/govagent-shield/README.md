@@ -28,7 +28,7 @@ OpenClaw：在真实工具执行前完成安全检测，并根据统一决策放
 ### 方式 A：复制到 OpenClaw 扩展目录
 
 ```powershell
-Copy-Item -Recurse openclaw_plugin\govagent-shield D:\OpenClaw\openclaw-main\extensions\govagent-shield
+Copy-Item -Recurse openclaw_plugin\govagent-shield <OPENCLAW_ROOT>\extensions\govagent-shield
 ```
 
 ### 方式 B：通过 OpenClaw 配置启用
@@ -128,7 +128,7 @@ fail-close 策略：
 ### 确认插件已加载
 
 ```powershell
-cd D:\OpenClaw\openclaw-main
+cd <OPENCLAW_ROOT>
 node openclaw.mjs plugins list --json
 ```
 
@@ -170,7 +170,7 @@ reason: 安全检测通过                    （决策原因：安全检测通�
 powershell scripts\preview_plugin_output.ps1
 ```
 
-脚本会先同步插件到 `D:\OpenClaw\openclaw-main\extensions\govagent-shield`，
+脚本会先同步插件到 `<OPENCLAW_ROOT>\extensions\govagent-shield`，
 再通过 stub 决策驱动真实 `beforeToolCall` hook，打印
 allow / warn / review / block / kill 五种决策的日志块与审批弹窗 JSON。
 预览输出同时写入 `scripts\preview_output.txt`。
@@ -180,7 +180,7 @@ allow / warn / review / block / kill 五种决策的日志块与审批弹窗 JSO
 运行插件运行时测试：
 
 ```powershell
-cd D:\OpenClaw\openclaw-main
+cd <OPENCLAW_ROOT>
 node_modules\.bin\vitest.cmd run extensions\govagent-shield\test\openclaw.runtime.test.ts
 ```
 
@@ -219,10 +219,10 @@ node_modules\.bin\vitest.cmd run extensions\govagent-shield\test\openclaw.runtim
 ### 配置不生效
 
 - 修改 `openclaw.json` 后需要重启 gateway
-- 确认修改的是用户配置 `C:\Users\ancientmoon\.openclaw\openclaw.json`
+- 确认修改的是用户配置 `%USERPROFILE%\.openclaw\openclaw.json`
 - 如果运行的是构建产物，需重新构建插件 dist：
 
   ```powershell
-  cd D:\OpenClaw\openclaw-main
+  cd <OPENCLAW_ROOT>
   node scripts\tsdown-build.mjs
   ```

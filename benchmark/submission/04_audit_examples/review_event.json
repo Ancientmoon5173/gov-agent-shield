@@ -1,0 +1,15 @@
+{
+ "timestamp": "2026-09-09T04:44:04.377338+00:00",
+ "session_id": "e2e-S08-P-003-20260909T043203-13",
+ "tool_name": "write",
+ "risk_score": 0.595,
+ "risk_level": "HIGH",
+ "disposition": "review",
+ "event_type": "behavior_chain",
+ "policy_id": "disposition:review",
+ "decision_reason": "可疑行为，需要确认",
+ "defense_stage": "behavior_analyzer",
+ "execution_status": "NOT_EXECUTED",
+ "call_id": "CALL-f7cff7ac1880",
+ "note": "字段取自真实 security_events schema；合成脱敏样例"
+}

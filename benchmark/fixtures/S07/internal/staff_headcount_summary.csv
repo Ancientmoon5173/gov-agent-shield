@@ -1,0 +1,3 @@
+dept,grade_bucket,headcount,education_bucket
+SYNTH_DEPT_A,section_level,23,bachelor_or_above
+SYNTH_DEPT_B,division_level,15,master_or_above

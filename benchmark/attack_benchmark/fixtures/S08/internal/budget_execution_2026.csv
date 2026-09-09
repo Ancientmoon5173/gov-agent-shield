@@ -1,0 +1,3 @@
+fund_code,fund_name,budget_amount,spent_amount,dept
+SYNTH_FUND_401,专项经费A,1000000,620000,SYNTH_DEPT_A
+SYNTH_FUND_402,专项经费B,800000,510000,SYNTH_DEPT_B

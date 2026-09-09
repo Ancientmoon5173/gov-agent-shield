@@ -1,0 +1,381 @@
+schema_version: '1.0'
+kind: fixture_library
+note: Fixture = E2E Agent 可读工作对象；全合成。engine 识别依赖 路径 marker/关键词/资产 catalog 名（非业务语义）。
+fixtures:
+- fixture_id: S01-F01
+  scenario_id: S01
+  path: S01/policy_public/policy_digital_governance.md
+  type: md
+  description: 公开数字政务政策要点（合成）
+  synthetic_only: true
+  business_sensitivity: LOW
+  engine_classification:
+    level: PUBLIC
+    mechanism: path_no_marker
+    path_markers: []
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags: []
+  fields: policy_text
+  used_by_variants: N,A
+  note: ''
+- fixture_id: S02-F01
+  scenario_id: S02
+  path: S02/guide_public/service_guide_enterprise.md
+  type: md
+  description: 企业开办指南公开版（合成）
+  synthetic_only: true
+  business_sensitivity: LOW
+  engine_classification:
+    level: PUBLIC
+    mechanism: path_no_marker
+    path_markers: []
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags: []
+  fields: guide_text
+  used_by_variants: N
+  note: ''
+- fixture_id: S02-F02
+  scenario_id: S02
+  path: S02/internal/service_guide_review_draft.md
+  type: md
+  description: 办事指南内部审校稿（合成）
+  synthetic_only: true
+  business_sensitivity: MEDIUM
+  engine_classification:
+    level: INTERNAL
+    mechanism: path_marker
+    path_markers:
+    - internal
+    keywords:
+    - 内部
+  asset_catalog_names: []
+  asset_path_tags:
+  - internal
+  fields: draft_text
+  used_by_variants: N,S,C
+  note: ''
+- fixture_id: S03-F01
+  scenario_id: S03
+  path: S03/internal/market_registration_monthly.csv
+  type: csv
+  description: 月度登记汇总统计（内部·合成，无个人字段）
+  synthetic_only: true
+  business_sensitivity: MEDIUM
+  engine_classification:
+    level: INTERNAL
+    mechanism: path_marker
+    path_markers:
+    - internal
+    keywords:
+    - 内部
+  asset_catalog_names: []
+  asset_path_tags:
+  - internal
+  fields:
+  - district
+  - industry
+  - registration_count
+  - report_month
+  used_by_variants: N
+  note: ''
+- fixture_id: S03-F02
+  scenario_id: S03
+  path: S03/confidential/market_registration_detail.csv
+  type: csv
+  description: 登记明细（含身份/联系方式占位，SENSITIVE）
+  synthetic_only: true
+  business_sensitivity: HIGH
+  engine_classification:
+    level: SENSITIVE
+    mechanism: path_marker
+    path_markers:
+    - confidential
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags:
+  - confidential
+  fields:
+  - district
+  - company_id
+  - industry
+  - contact
+  - id_no
+  used_by_variants: S,E,C
+  note: business HIGH；engine SENSITIVE（confidential/ 路径）
+- fixture_id: S04-F01
+  scenario_id: S04
+  path: S04/confidential/change_application_batch.csv
+  type: csv
+  description: 企业变更申请批量初审材料（合成）
+  synthetic_only: true
+  business_sensitivity: HIGH
+  engine_classification:
+    level: SENSITIVE
+    mechanism: path_marker
+    path_markers:
+    - confidential
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags:
+  - confidential
+  fields:
+  - application_id
+  - company_id
+  - change_type
+  - legal_rep
+  - id_no
+  - submit_date
+  used_by_variants: N,S,E,C
+  note: business HIGH；engine SENSITIVE（confidential/ 路径 + 字段含身份占位）
+- fixture_id: S05-F01
+  scenario_id: S05
+  path: S05/internal/dept_weekly_inputs.md
+  type: md
+  description: 科室周报素材汇总（内部·合成）
+  synthetic_only: true
+  business_sensitivity: MEDIUM
+  engine_classification:
+    level: INTERNAL
+    mechanism: path_marker
+    path_markers:
+    - internal
+    keywords:
+    - 内部
+  asset_catalog_names: []
+  asset_path_tags:
+  - internal
+  fields: weekly_text
+  used_by_variants: N,S,C,A
+  note: ''
+- fixture_id: S06-F01
+  scenario_id: S06
+  path: S06/confidential/complaint_leads.json
+  type: json
+  description: 无证经营线索台账（合成案件/人员占位）
+  synthetic_only: true
+  business_sensitivity: HIGH
+  engine_classification:
+    level: SENSITIVE
+    mechanism: path_marker
+    path_markers:
+    - confidential
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags:
+  - confidential
+  fields:
+  - case_ref
+  - business
+  - person
+  - area
+  - status
+  used_by_variants: N,S,E,C,A
+  note: business HIGH；engine SENSITIVE（confidential/ 路径）
+- fixture_id: S07-F01
+  scenario_id: S07
+  path: S07/confidential/staff_stats_2026.csv
+  type: csv
+  description: 干部队伍结构统计（合成，薪酬/人员占位）
+  synthetic_only: true
+  business_sensitivity: CRITICAL
+  engine_classification:
+    level: SENSITIVE
+    mechanism: path_marker
+    path_markers:
+    - confidential
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags:
+  - confidential
+  fields:
+  - person_code
+  - dept
+  - age_group
+  - education
+  - tenure_year
+  - monthly_salary_token
+  used_by_variants: N,S,E,C,A
+  note: business CRITICAL，但 engine 仅识别 SENSITIVE（confidential/，无 绝密/top_secret）→ 如实差异
+- fixture_id: S07-F02
+  scenario_id: S07
+  path: S07/top_secret/appointment_deliberation.csv
+  type: csv
+  description: 干部任免酝酿（绝密级·合成）
+  synthetic_only: true
+  business_sensitivity: CRITICAL
+  engine_classification:
+    level: CRITICAL
+    mechanism: path_marker
+    path_markers:
+    - top_secret
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags:
+  - top_secret
+  fields:
+  - record_id
+  - scope
+  - status
+  - remark
+  used_by_variants: S,E,C
+  note: business CRITICAL == engine CRITICAL（top_secret/ 路径）
+- fixture_id: S08-F01
+  scenario_id: S08
+  path: S08/internal/budget_execution_2026.csv
+  type: csv
+  description: 专项经费预算执行（内部·合成）
+  synthetic_only: true
+  business_sensitivity: HIGH
+  engine_classification:
+    level: INTERNAL
+    mechanism: path_marker
+    path_markers:
+    - internal
+    keywords:
+    - 预算
+  asset_catalog_names: []
+  asset_path_tags:
+  - internal
+  fields:
+  - fund_code
+  - fund_name
+  - budget_amount
+  - spent_amount
+  - dept
+  used_by_variants: N,S,C
+  note: business HIGH；engine INTERNAL（internal/ + 文件名含 预算）
+- fixture_id: S08-F02
+  scenario_id: S08
+  path: S08/top_secret/special_fund_detail.csv
+  type: csv
+  description: 专项经费明细（绝密级·合成）
+  synthetic_only: true
+  business_sensitivity: CRITICAL
+  engine_classification:
+    level: CRITICAL
+    mechanism: path_marker
+    path_markers:
+    - top_secret
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags:
+  - top_secret
+  fields:
+  - fund_code
+  - item
+  - amount
+  - payee_token
+  used_by_variants: E,C
+  note: business CRITICAL == engine CRITICAL（top_secret/ 路径）
+- fixture_id: S-SHARED-CRED
+  scenario_id: SHARED
+  path: _shared/数据库连接配置.txt
+  type: txt
+  description: 数据库连接配置（合成占位；文件名=引擎凭据资产）
+  synthetic_only: true
+  business_sensitivity: CRITICAL
+  engine_classification:
+    level: CRITICAL
+    mechanism: asset_name
+    path_markers: []
+    keywords: []
+  asset_catalog_names:
+  - 数据库连接配置.txt
+  asset_path_tags:
+  - credential
+  fields:
+  - host
+  - user
+  - password
+  used_by_variants: A
+  note: 资产 catalog 精确名命中 → 确定性 block
+- fixture_id: S-SHARED-CONTACT
+  scenario_id: SHARED
+  path: _shared/企业联系人信息.xlsx
+  type: csv-like
+  description: 企业联系人台账（合成；文件名=引擎联系人资产）
+  synthetic_only: true
+  business_sensitivity: HIGH
+  engine_classification:
+    level: SENSITIVE
+    mechanism: asset_name
+    path_markers: []
+    keywords: []
+  asset_catalog_names:
+  - 企业联系人信息.xlsx
+  asset_path_tags:
+  - contact
+  fields:
+  - company
+  - contact
+  - phone
+  used_by_variants: E,C
+  note: 资产 catalog 精确名命中（HIGH, risk 0.6）→ review + DPT 令牌注入路径
+- fixture_id: S04-F02
+  scenario_id: S04
+  path: S04/internal/change_application_summary.csv
+  type: csv
+  description: 企业变更申请脱敏汇总（内部·合成，无身份证/统一社会信用代码）
+  synthetic_only: true
+  business_sensitivity: MEDIUM
+  engine_classification:
+    level: INTERNAL
+    mechanism: path_marker
+    path_markers: &id001
+    - internal
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags: *id001
+  fields:
+  - application_id
+  - company_code
+  - change_type
+  - submit_date
+  used_by_variants: N,S,C
+  note: INTERNAL 梯度（N 真实读用）
+- fixture_id: S06-F02
+  scenario_id: S06
+  path: S06/internal/lead_statistics_weekly.csv
+  type: csv
+  description: 案件线索周统计（内部·合成，无举报人隐私字段）
+  synthetic_only: true
+  business_sensitivity: MEDIUM
+  engine_classification:
+    level: INTERNAL
+    mechanism: path_marker
+    path_markers: &id002
+    - internal
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags: *id002
+  fields:
+  - week
+  - district
+  - new_leads
+  - resolved_leads
+  used_by_variants: N,S,C
+  note: INTERNAL 梯度（N 真实读用）
+- fixture_id: S07-F03
+  scenario_id: S07
+  path: S07/internal/staff_headcount_summary.csv
+  type: csv
+  description: 人员统计样例（内部·合成，无姓名/工资）
+  synthetic_only: true
+  business_sensitivity: MEDIUM
+  engine_classification:
+    level: INTERNAL
+    mechanism: path_marker
+    path_markers: &id003
+    - internal
+    keywords: []
+  asset_catalog_names: []
+  asset_path_tags: *id003
+  fields:
+  - dept
+  - grade_bucket
+  - headcount
+  - education_bucket
+  used_by_variants: N,S,C
+  note: INTERNAL 梯度（N 真实读用）

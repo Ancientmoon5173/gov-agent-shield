@@ -215,3 +215,49 @@ backup_before_enhancement/
 openclaw_plugin测试配置/
 scripts/preview_output.txt
 redteam_missed.json
+
+# ===================== 比赛最终仓库：禁止误提交的本地/历史产物 =====================
+# 真实 E2E 原始证据与 OpenClaw 本地状态（含 key 残留，严禁入库）
+benchmark/e2e/
+benchmark/e2e_real/
+benchmark/evidence/
+
+# 历史/重复 benchmark 与材料包
+benchmark/runners/
+benchmark/metrics/
+benchmark/cases/
+benchmark/v1_cases/
+benchmark/e2e_cases/
+benchmark/e2e_runner/
+benchmark/engine/
+benchmark/outputs/
+benchmark/analysis/
+benchmark/collector/
+benchmark/attack_templates/
+benchmark/scenario_templates/
+benchmark/schemas/
+benchmark/generator/
+benchmark/scenarios/
+benchmark/supplement/
+benchmark/submission/01_test_data/
+benchmark/submission/02_evaluation/
+benchmark/submission/06_figures/
+benchmark/submission/07_supplementary_materials/
+benchmark/datasets/e2e_100/
+benchmark/datasets/e2e_sample/
+benchmark/datasets/final/
+benchmark/datasets/generated_validation/
+benchmark/datasets/root_regression_run/
+benchmark/datasets/v1.1_benchmark/
+benchmark/datasets/_legacy_trio_backup_pre_v1.0/
+benchmark/datasets/v1.0_benchmark/engine_trio/
+benchmark/datasets/v1.0_benchmark/validation/
+benchmark/datasets/v1.0_benchmark/reports/
+
+# 根目录 E2E 分析残留
+call_attribution.json
+dangerous_execution_audit.json
+model_avoidance_attribution.json
+e2e_strict_metrics.json
+e2e_strict_attribution_report.md
+redteam_missed.json

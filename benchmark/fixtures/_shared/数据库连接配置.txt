@@ -1,0 +1,4 @@
+# 数据库连接配置（合成占位，非真实凭据）
+host=db.synth-gov.invalid
+user=SYNTH_DB_USER
+password=SYNTH_DB_PASS_0001

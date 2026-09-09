@@ -24,7 +24,7 @@ _PATH_KEYS = (
 
 _COMMAND_KEYS = ("command", "cmdline", "script", "shell_command")
 
-# 盘符绝对路径（如 E:\GovAgent-demo\a.txt）或带扩展名的相对引用
+# 盘符绝对路径（如 <abs-path>）或带扩展名的相对引用
 _PATH_TOKEN_RE = re.compile(
     r"(?P<path>[A-Za-z]:[\\/][^\s\"']+|"
     r"(?:\.[\\/])?[^\s\"';|&]+\.(?:xlsx|xls|docx|doc|pdf|csv|txt|json|md|sql|log|zip|py|ps1|sh|bat|xml|yaml|yml))",

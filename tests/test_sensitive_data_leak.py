@@ -1,6 +1,6 @@
-﻿"""Sensitive Data Leak Detector tests."""
+"""Sensitive Data Leak Detector tests."""
 import sys, json, pathlib
-sys.path.insert(0, r"E:\Openclaw项目\揭榜挂帅\揭榜挂帅项目主体\GovAgent-Shield")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from src.security import create_orchestrator
 

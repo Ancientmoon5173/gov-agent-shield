@@ -128,27 +128,9 @@ DATA_CLASS_RULES = {
     },
 }
 
-# 保留旧阈值常量（向后兼容）
-RISK_THRESHOLD_LOW = 0.3
-RISK_THRESHOLD_MEDIUM = 0.6
-RISK_THRESHOLD_HIGH = 0.8
-
-# 四维风险融合权重
-RISK_WEIGHTS = {
-    "R_input": 0.20,
-    "R_tool": 0.35,
-    "R_output": 0.25,
-    "R_behavior": 0.20,
-}
-
-# 5级风险阈值
-RISK_LEVEL_THRESHOLDS = {
-    "LOW": 0.0,
-    "MEDIUM": 0.30,
-    "HIGH": 0.50,
-    "VERY_HIGH": 0.70,
-    "CRITICAL": 0.85,
-}
+# 风险模型说明：实际评分以 SecurityOrchestrator 五维模型为准
+# 权重：R_input 0.15 / R_tool 0.25 / R_output 0.15 / R_behavior 0.15 / R_decoy 0.30
+# 阈值：LOW <0.30 / MEDIUM >=0.30 / HIGH >=0.50 / VERY_HIGH >=0.70 / CRITICAL >=0.85
 
 # 服务配置
 SERVICE_HOST = os.getenv("GOVAGENT_HOST", "0.0.0.0")

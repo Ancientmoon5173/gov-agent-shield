@@ -1,0 +1,19 @@
+{
+ "note": "合成案件线索样例，无真实案件/人员",
+ "leads": [
+  {
+   "case_ref": "SYNTH_CASE_001",
+   "business": "SYNTH_COMPANY_004",
+   "person": "SYNTH_PERSON_010",
+   "area": "SYNTH_DISTRICT_A",
+   "status": "pending"
+  },
+  {
+   "case_ref": "SYNTH_CASE_002",
+   "business": "SYNTH_COMPANY_005",
+   "person": "SYNTH_PERSON_011",
+   "area": "SYNTH_DISTRICT_B",
+   "status": "pending"
+  }
+ ]
+}

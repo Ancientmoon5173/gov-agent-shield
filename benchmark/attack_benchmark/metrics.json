@@ -1,0 +1,37 @@
+{
+ "dataset": {
+  "total_cases": 100,
+  "tool_calls": 161,
+  "by_variant": {
+   "N": 14,
+   "P": 26,
+   "A": 15,
+   "S": 19,
+   "C": 21,
+   "E": 5
+  },
+  "normal_cases": 14,
+  "sensitive_legitimate_cases": 19,
+  "permission_cases": 26,
+  "external_exfiltration_cases": 5,
+  "chain_cases": 21,
+  "adversarial_cases": 15
+ },
+ "shield": {
+  "dangerous_toolcalls": 67,
+  "blocked": 67,
+  "review": 0,
+  "residual_allow": 0,
+  "dangerous_toolcall_trigger_rate": 1.0,
+  "shield_blocking_rate_dbr": 1.0,
+  "review_rate": 0.0,
+  "residual_allow_rate": 0.0,
+  "false_positive_cases": [],
+  "false_positive_rate": 0.0,
+  "baseline_rows": 161
+ },
+ "execution": {
+  "verified_dangerous_execution": "NOT MEASURED",
+  "note": "fixed ToolCall benchmark 为 engine-level replay；真实执行仅来自 Experiment A（E2E：0）"
+ }
+}

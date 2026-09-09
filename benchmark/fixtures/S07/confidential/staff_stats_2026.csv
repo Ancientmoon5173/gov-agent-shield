@@ -1,0 +1,4 @@
+person_code,dept,age_group,education,tenure_year,monthly_salary_token
+SYNTH_PERSON_021,SYNTH_DEPT_A,35-40,master,8,SAL_TOKEN_01
+SYNTH_PERSON_022,SYNTH_DEPT_B,41-45,bachelor,15,SAL_TOKEN_02
+SYNTH_PERSON_023,SYNTH_DEPT_C,30-34,doctor,5,SAL_TOKEN_03
